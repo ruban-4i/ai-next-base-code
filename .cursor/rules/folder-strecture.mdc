@@ -1,0 +1,98 @@
+---
+description: Folder Structure Rules - Keep code organized by the project layout
+globs: '**/*'
+alwaysApply: true
+---
+
+### Purpose
+
+Keep every new file and edit aligned with the existing folder structure. Place code in the correct layer, avoid cross-layer leaks, and keep responsibilities clear.
+
+### Top-level layout (do not add new root folders)
+
+- **Root config only**: `package.json`, `tsconfig.json`, `biome.jsonc`, `next.config.ts`, PostCSS/Tailwind config, etc.
+- **Public assets**: put images, SVGs, and static files in `public/`. Import via `/file.svg`. Do not place assets under `src/`.
+
+### src/ layout and responsibilities
+
+- **`src/app/` (Next.js app router)**
+
+  - Route segments and layouts only: `layout.tsx`, `page.tsx`, and nested route folders.
+  - Can import from `components/`, `hooks/`, `lib/`, and `providers/`.
+  - Default to Server Components; add `"use client"` only when necessary.
+  - Do not place generic components or utilities here.
+
+- **`src/components/ui/` (reusable UI primitives)**
+
+  - Stateless, reusable building blocks (e.g., buttons, dialogs, inputs). No business logic, no API calls.
+  - Must not import from `app/`, `providers/`, or feature-specific components.
+  - Keep files co-located here with exact one component per file. Export component and its types from the same file.
+
+- **`src/components/` (feature and composite components)**
+
+  - Components composed from `ui` primitives plus hooks/lib. Feature-specific code goes in subfolders, e.g., `src/components/auth/*`.
+  - May import from `components/ui`, `hooks`, and `lib`. Must not import from `app`.
+
+- **`src/hooks/` (custom React hooks)**
+
+  - Files named `use-*.ts`. Hooks return state/logic, not JSX. May import from `lib`.
+  - Must not import from `app` or `components`.
+
+- **`src/lib/` (framework-agnostic utilities)**
+
+  - Pure utilities and helpers (no React, no Next-specific imports). Safe for reuse across any layer.
+  - Must not import from `app`, `components`, `hooks`, or `providers`.
+
+- **`src/providers/` (React context providers)**
+
+  - Contexts and provider components. Optionally expose a single `providers.tsx` to wrap the tree in `src/app/layout.tsx`.
+  - May import from `hooks`, `lib`, and `components/ui`. Must not import from `app`.
+
+- **`src/styles/` (global styles only)**
+  - Keep `globals.css` here and import it in `src/app/layout.tsx`.
+  - For component-scoped styles, prefer CSS Modules next to the component file (e.g., `MyCard.module.css`). Do not add feature styles under `styles/`.
+
+### Import layering (allowed directions)
+
+- `lib` → (imports nothing from other app layers)
+- `hooks` → may import from `lib`
+- `components/ui` → may import from `lib`
+- `components/*` → may import from `components/ui`, `hooks`, `lib`
+- `providers` → may import from `components/ui`, `hooks`, `lib`
+- `app` → may import from `components`, `hooks`, `lib`, `providers`
+
+Disallow the reverse directions (e.g., `lib` importing from `components`, `hooks` importing from `components`, or anything importing from `app`).
+
+### Naming and conventions
+
+- TypeScript only: use `.ts` and `.tsx`.
+- Hooks: `use-*.ts` (e.g., `use-mobile.ts`).
+- Components: one component per file. File names are kebab-case (matches existing `ui` components). Export default component when it is the primary export.
+- Avoid `index.ts` barrels unless a folder explicitly aggregates stable public APIs.
+
+### Routing rules (Next.js app router)
+
+- New routes live under `src/app/<segment>/page.tsx` with optional `layout.tsx`.
+- Shared layouts and providers are set up via `src/app/layout.tsx` and `src/providers/*`.
+- Do not add a legacy `pages/` directory.
+
+### Assets and static files
+
+- Put images, icons, and static files in `public/`. Import as `/my-asset.svg`.
+- Do not commit large binaries into `src/`.
+
+### Quick placement guide
+
+- UI primitive? → `src/components/ui/`
+- Feature/component composition? → `src/components/<feature>/`
+- Hook (no JSX)? → `src/hooks/`
+- Framework-agnostic util? → `src/lib/`
+- Context provider? → `src/providers/`
+- Route/page/layout? → `src/app/`
+- Global styles? → `src/styles/`; component-level styles next to the component as CSS Module.
+
+### Enforcement for AI edits
+
+- When creating or moving files, follow the placement rules above.
+- If a file violates a rule (e.g., a hook under `components/`), move it to the correct folder and fix imports.
+- Do not introduce new top-level folders without explicit instructions.

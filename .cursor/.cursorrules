@@ -1,0 +1,17 @@
+# Rules Index
+
+Quick index of rule files under `./rules/`.
+
+- **Ultracite**: AI-ready formatter and linter rules for strict type safety and a11y
+
+  - File: [rules/ultracite.mdc](rules/ultracite.mdc)
+  - Globs: `**/*.{ts,tsx,js,jsx}`; Always apply: `true`
+
+- **Folder Structure Rules**: Keep code organized by the project layout and import layering
+  - File: [rules/folder-strecture.mdc](rules/folder-strecture.mdc)
+  - Globs: `**/*`; Always apply: `true`
+
+Usage:
+
+- Follow these rules when adding or editing files. Prefer placing code in the correct layer (`src/app`, `src/components`, `src/hooks`, `src/lib`, `src/providers`, `src/styles`).
+- Ultracite tasks: `npx ultracite format` to auto-fix and `npx ultracite lint` to check issues.
