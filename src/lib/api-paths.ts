@@ -10,19 +10,19 @@ export const API_PATHS = {
   USERS: {
     // List users with pagination and filtering
     LIST: '/users',
-    
+
     // Get single user by ID
     GET_BY_ID: (userId: string) => `/users/${userId}`,
-    
+
     // Create new user
     CREATE: '/users',
-    
+
     // Update existing user
     UPDATE: (userId: string) => `/users/${userId}`,
-    
+
     // Delete user
     DELETE: (userId: string) => `/users/${userId}`,
-    
+
     // Batch operations
     BATCH_DELETE: '/users/batch-delete',
     BATCH_UPDATE: '/users/batch-update',
@@ -59,33 +59,60 @@ export const API_PATHS = {
     UPDATE: (deptId: string) => `/departments/${deptId}`,
     DELETE: (deptId: string) => `/departments/${deptId}`,
   },
-} as const
+
+  /**
+   * Topics-related API endpoints
+   */
+  TOPICS: {
+    // List topics with pagination and filtering
+    LIST: '/topics',
+
+    // Get single topic by ID
+    GET_BY_ID: (topicId: string) => `/topics/${topicId}`,
+
+    // Create new topic
+    CREATE: '/topics',
+
+    // Update existing topic
+    UPDATE: (topicId: string) => `/topics/${topicId}`,
+
+    // Delete topic
+    DELETE: (topicId: string) => `/topics/${topicId}`,
+
+    // Batch operations
+    BATCH_DELETE: '/topics/batch-delete',
+    BATCH_UPDATE: '/topics/batch-update',
+  },
+} as const;
 
 /**
  * Helper function to build query string from parameters
  */
-export const buildQueryString = (params: Record<string, string | number | boolean | undefined>): string => {
-  const searchParams = new URLSearchParams()
-  
+export const buildQueryString = (
+  params: Record<string, string | number | boolean | undefined>
+): string => {
+  const searchParams = new URLSearchParams();
+
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== '') {
-      searchParams.append(key, String(value))
+      searchParams.append(key, String(value));
     }
-  })
-  
-  const queryString = searchParams.toString()
-  return queryString ? `?${queryString}` : ''
-}
+  });
+
+  const queryString = searchParams.toString();
+  return queryString ? `?${queryString}` : '';
+};
 
 /**
  * Type-safe URL builder for dynamic paths
  */
 export type ApiPathBuilder = {
-  [K in keyof typeof API_PATHS]: typeof API_PATHS[K]
-}
+  [K in keyof typeof API_PATHS]: (typeof API_PATHS)[K];
+};
 
 // Export individual path groups for convenience
-export const USER_PATHS = API_PATHS.USERS
-export const AUTH_PATHS = API_PATHS.AUTH
-export const ROLE_PATHS = API_PATHS.ROLES
-export const DEPARTMENT_PATHS = API_PATHS.DEPARTMENTS
+export const USER_PATHS = API_PATHS.USERS;
+export const AUTH_PATHS = API_PATHS.AUTH;
+export const ROLE_PATHS = API_PATHS.ROLES;
+export const DEPARTMENT_PATHS = API_PATHS.DEPARTMENTS;
+export const TOPICS_PATHS = API_PATHS.TOPICS;

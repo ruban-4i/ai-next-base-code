@@ -1,0 +1,302 @@
+# Next.js Route Generation Rules
+
+**CONCISE PROMPT FORMAT**:
+
+```
+Generate route for: {entity_name}
+Data shape: {json_structure}
+```
+
+## CORE GENERATION PATTERN
+
+### 1. REQUIRED INPUTS
+
+- **Entity Name**: `products`, `orders`, `customers` (lowercase, plural)
+- **Data Shape**: JSON structure with field types and constraints
+
+### 2. AUTO-GENERATED FILES (Complete Stack)
+
+```
+📁 SCHEMAS & API
+├── src/lib/schemas/{entity}-schema.ts      # Zod schemas + types
+├── src/api/{entity}-api.ts                 # Axios instance
+└── src/lib/api-paths.ts                    # Add {ENTITY} paths
+
+📁 SERVER LAYER
+├── src/server/functions/{entity}-functions.ts  # Read operations (ISR/RSC)
+└── src/server/actions/{entity}-actions.ts      # Write operations (mutations)
+
+📁 PAGES & ROUTES
+├── src/app/{entity}/page.tsx                    # List page
+├── src/app/{entity}/[{ID_FIELD}]/page.tsx       # Detail page
+├── src/app/{entity}/new/page.tsx                # Create page
+└── src/app/{entity}/[{ID_FIELD}]/edit/page.tsx  # Edit page
+
+📁 VIEWS & UI
+├── src/pages/{entity}/views/{entity}-list-view.tsx        # List UI
+├── src/pages/{entity}/views/{entity}-details-view.tsx     # Detail UI
+├── src/pages/{entity}/views/{entity}-create-edit-view.tsx # Form UI
+└── src/pages/{entity}/hooks/use-{entity}-column.tsx       # Table columns
+```
+
+## TEMPLATE VARIABLES
+
+Replace in ALL generated code:
+
+- `{entity}` → `products` (lowercase)
+- `{Entity}` → `Products` (PascalCase)
+- `{ENTITY}` → `PRODUCTS` (UPPERCASE)
+- `{ID_FIELD}` → Primary key field name from JSON
+
+## SCHEMA GENERATION (DRY Pattern)
+
+```typescript
+// BASE SCHEMA - Single source of truth
+const base{Entity}Schema = z.object({
+  {ID_FIELD}: z.string().min(1, 'ID required'),
+  // Map JSON fields to Zod validators
+})
+
+// EXTEND FOR CRUD
+export const {entity}Schema = base{Entity}Schema
+export const {entity}CreateSchema = base{Entity}Schema.omit({ {ID_FIELD}: true })
+export const {entity}UpdateSchema = base{Entity}Schema.partial().required({ {ID_FIELD}: true })
+export const {entity}QuerySchema = base{Entity}Schema.partial().extend({
+  page: z.coerce.number().positive().default(1),
+  limit: z.coerce.number().positive().max(100).default(10),
+  sortBy: z.enum(['{SORTABLE_FIELDS}']).optional(),
+  sortOrder: z.enum(['asc', 'desc']).default('asc'),
+  search: z.string().optional(),
+})
+
+// RESPONSE SCHEMAS
+export const {entity}ListResponseSchema = z.object({
+  data: z.array({entity}Schema),
+  currentPage: z.number().positive(),
+  totalPages: z.number().positive(),
+  totalcount: z.number().nonnegative(),
+})
+```
+
+## SERVER LAYER PATTERN
+
+### Functions (Read Operations - NO 'use server')
+
+```typescript
+import { {entityApi} } from '@/api/{entity}-api'
+import { {ENTITY}_PATHS } from '@/lib/api-paths'
+
+export async function get{Entity}sList(query: {Entity}Query): Promise<{Entity}ListResponse> {
+  // Implementation with error handling
+}
+
+export async function get{Entity}ById({idField}: string): Promise<{Entity}Response | null> {
+  // Implementation with validation
+}
+```
+
+### Actions (Write Operations - WITH 'use server')
+
+```typescript
+'use server'
+
+import { revalidatePath } from 'next/cache'
+
+type ActionResult<T = unknown> = {
+  success: boolean
+  data?: T
+  error?: string
+  fieldErrors?: Record<string, string[]>
+}
+
+export async function create{Entity}(data: {Entity}Create): Promise<ActionResult<{Entity}Response>>
+export async function update{Entity}(id: string, data: Partial<{Entity}Update>): Promise<ActionResult<{Entity}Response>>
+export async function delete{Entity}(id: string): Promise<ActionResult<{Entity}DeleteResponse>>
+```
+
+## PAGE STRUCTURE
+
+### List Page (`src/app/{entity}/page.tsx`)
+
+```typescript
+import { get{Entity}sList } from '@/server/functions/{entity}-functions'
+import { {Entity}ListView } from '@/pages/{entity}/views/{entity}-list-view'
+
+type Props = {
+  searchParams: { [key: string]: string | string[] | undefined }
+}
+
+export default async function {Entity}Page({ searchParams }: Props) {
+  const query = {
+    page: Number(searchParams.page) || 1,
+    limit: Number(searchParams.limit) || 10,
+    search: searchParams.search as string,
+    sortBy: searchParams.sortBy as string,
+    sortOrder: (searchParams.sortOrder as 'asc' | 'desc') || 'asc',
+  }
+
+  const {entityList} = await get{Entity}sList(query)
+
+  return <{Entity}ListView initialData={{entityList}} />
+}
+```
+
+### Detail Page (`src/app/{entity}/[{ID_FIELD}]/page.tsx`)
+
+```typescript
+import { get{Entity}ById } from '@/server/functions/{entity}-functions'
+import { {Entity}DetailsView } from '@/pages/{entity}/views/{entity}-details-view'
+
+export default async function {Entity}DetailPage({ params }: { params: { {ID_FIELD}: string } }) {
+  const {entity} = await get{Entity}ById(params.{ID_FIELD})
+
+  if (!{entity}) {
+    return <div>Not found</div>
+  }
+
+  return <{Entity}DetailsView {entity}={{entity}} />
+}
+```
+
+## VIEW COMPONENTS
+
+### List View Pattern
+
+- Server-side pagination with ISR
+- Search/filter functionality
+- Data table with sorting
+- Bulk actions support
+- Uses `use-{entity}-column.tsx` hook
+
+### Details View Pattern
+
+- Display all entity fields
+- Edit/Delete action buttons
+- Breadcrumb navigation
+- Related data sections
+
+### Create/Edit View Pattern
+
+- React Hook Form + Zod validation
+- Server actions for mutations
+- Loading states and error handling
+- Success/error toast notifications
+
+## API INTEGRATION
+
+### Axios Instance (`src/api/{entity}-api.ts`)
+
+```typescript
+import axios from 'axios'
+import { env } from '@/env'
+
+export const {entityApi} = axios.create({
+  baseURL: env.{API_NAME}_APPLICATION_URL,
+  headers: { 'Content-Type': 'application/json' },
+  timeout: 10000,
+})
+```
+
+### API Paths (`src/lib/api-paths.ts` - ADD TO EXISTING)
+
+```typescript
+export const API_PATHS = {
+  // ... existing paths
+  {ENTITY}: {
+    LIST: '/{entities}',
+    GET_BY_ID: ({idField}: string) => `/{entities}/${{idField}}`,
+    CREATE: '/{entities}',
+    UPDATE: ({idField}: string) => `/{entities}/${{idField}}`,
+    DELETE: ({idField}: string) => `/{entities}/${{idField}}`,
+    BATCH_DELETE: '/{entities}/batch-delete',
+    BATCH_UPDATE: '/{entities}/batch-update',
+  },
+}
+```
+
+## FIELD TYPE MAPPING
+
+```typescript
+// JSON → Zod Schema Mapping
+"string"           → z.string()
+"email@test.com"   → z.email()
+123                → z.number()
+true/false         → z.boolean()
+"Y"/"N"            → z.enum(['Y', 'N'])
+null               → z.string().nullable()
+undefined          → z.string().optional()
+"2024-01-01"       → z.string().datetime()
+"ObjectId"         → z.string().min(1)
+```
+
+## GENERATION CHECKLIST
+
+### ✅ Schema & Types
+
+- [ ] Base schema with all field validations
+- [ ] CRUD operation schemas (create, update, query)
+- [ ] Response schemas (list, single, delete)
+- [ ] Export all TypeScript types
+
+### ✅ API Integration
+
+- [ ] Axios instance with environment variable
+- [ ] API paths constants
+- [ ] Update env.ts with new variable
+
+### ✅ Server Layer
+
+- [ ] Functions file (NO 'use server')
+- [ ] Actions file (WITH 'use server')
+- [ ] Proper error handling and validation
+
+### ✅ Routes & Pages
+
+- [ ] List page with search params
+- [ ] Detail page with dynamic routing
+- [ ] Create page (optional)
+- [ ] Edit page (optional)
+
+### ✅ Views & UI
+
+- [ ] List view with data table
+- [ ] Details view with actions
+- [ ] Create/Edit form view
+- [ ] Table columns hook
+
+## USAGE EXAMPLE
+
+**Prompt**:
+
+```
+Generate route for: products
+Data shape: {
+  "PRODUCT_ID": "507f1f77bcf86cd799439011",
+  "NAME": "iPhone 15",
+  "PRICE": 999.99,
+  "CATEGORY": "Electronics",
+  "ACTIVE": "Y",
+  "DESCRIPTION": "Latest iPhone model"
+}
+```
+
+**Result**: Complete product management system with:
+
+- ✅ 10+ files generated following exact patterns
+- ✅ Type-safe CRUD operations
+- ✅ Server-side rendering with ISR
+- ✅ Form validation with Zod
+- ✅ Responsive data tables
+- ✅ Search, filter, and pagination
+- ✅ Error handling and loading states
+
+## ANTI-PATTERNS TO AVOID
+
+❌ Don't duplicate field definitions across schemas
+❌ Don't use 'use server' in functions files  
+❌ Don't hardcode API URLs
+❌ Don't create separate type files
+❌ Don't skip error handling
+❌ Don't forget revalidation in actions
+❌ Don't mix read/write operations in same file
+❌ Don't skip input/output validation
