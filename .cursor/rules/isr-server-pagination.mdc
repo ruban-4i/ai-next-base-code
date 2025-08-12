@@ -1,0 +1,707 @@
+# ISR Server-Side Pagination Pattern
+
+## Purpose
+
+This rule defines the complete pattern for implementing server-side pagination with ISR (Incremental Static Regeneration) using nuqs for URL state management. Use this pattern for creating list and detail pages with optimal performance and SEO.
+
+## When to Use
+
+- Creating paginated list pages (users, products, orders, etc.)
+- Building detail pages with server-side data fetching
+- Need SEO-friendly pages with shareable URLs
+- Want optimal performance with ISR caching
+- Require server-side filtering, sorting, and searching
+
+## Architecture Overview
+
+### File Structure Pattern
+
+```
+src/app/{entity}/
+├── page.tsx                           # List page (Server Component)
+├── [ID]/
+│   └── page.tsx                       # Detail page (Server Component)
+src/pages/{entity}/
+├── views/
+│   ├── {entity}-list-view.tsx         # List UI (Client Component)
+│   └── {entity}-details-view.tsx      # Detail UI (Client Component)
+└── hooks/
+    └── use-{entity}-column.tsx        # Table columns hook
+src/server/functions/
+└── {entity}-functions.ts             # Query functions (no 'use server')
+src/server/actions/
+└── {entity}-actions.ts               # Mutation actions (with 'use server')
+src/lib/schemas/
+└── {entity}-schema.ts                # Zod schemas and types
+```
+
+### Component Relationships
+
+```
+Server Components (ISR)    Client Components (Interactive)
+├── page.tsx               ├── {entity}-list-view.tsx
+│   ├── Parse URL params   │   ├── nuqs URL state management
+│   ├── Fetch data         │   ├── DataTable with pagination
+│   └── Pass to view       │   └── User interactions
+└── [ID]/page.tsx          └── {entity}-details-view.tsx
+    ├── Parse ID param         ├── Display detailed info
+    ├── Fetch single item      ├── Action buttons
+    └── Pass to view           └── Navigation links
+```
+
+## Implementation Steps
+
+### Step 1: Create Zod Schemas
+
+```typescript
+// src/lib/schemas/{entity}-schema.ts
+import { z } from 'zod'
+
+// Base schema (single source of truth)
+const base{Entity}Schema = z.object({
+  ID: z.string().min(1, 'ID is required'),
+  NAME: z.string().min(1, 'Name is required'),
+  EMAIL: z.email('Must be a valid email'),
+  STATUS: z.enum(['ACTIVE', 'INACTIVE']).default('ACTIVE'),
+  CREATED_AT: z.string().optional(),
+  UPDATED_AT: z.string().optional(),
+})
+
+// Derived schemas using DRY principle
+export const {entity}Schema = base{Entity}Schema
+export const {entity}CreateSchema = base{Entity}Schema.omit({ ID: true, CREATED_AT: true, UPDATED_AT: true })
+export const {entity}UpdateSchema = base{Entity}Schema.partial().required({ ID: true })
+
+// List response schema
+export const {entity}ListResponseSchema = z.object({
+  data: z.array({entity}Schema),
+  currentPage: z.number().int().positive(),
+  totalPages: z.number().int().positive(),
+  totalcount: z.number().int().nonnegative(),
+})
+
+// Query schema
+export const {entity}QuerySchema = z.object({
+  page: z.number().int().positive().default(1),
+  limit: z.number().int().positive().default(10),
+  sortBy: z.string().optional(),
+  sortOrder: z.enum(['asc', 'desc']).default('asc'),
+  search: z.string().optional(),
+})
+
+// Export types
+export type {Entity} = z.infer<typeof {entity}Schema>
+export type {Entity}Create = z.infer<typeof {entity}CreateSchema>
+export type {Entity}Update = z.infer<typeof {entity}UpdateSchema>
+export type {Entity}Query = z.infer<typeof {entity}QuerySchema>
+export type {Entity}ListResponse = z.infer<typeof {entity}ListResponseSchema>
+```
+
+### Step 2: Create Server Functions
+
+```typescript
+// src/server/functions/{entity}-functions.ts
+// NO 'use server' directive - these are for ISR/RSC reads
+
+import { api{Entity}Instance } from '@/api/{entity}-api'
+import { API_PATHS } from '@/lib/api-paths'
+import { buildQueryString } from '@/lib/api-paths'
+import {
+  {entity}ListResponseSchema,
+  {entity}Schema,
+  type {Entity}Query,
+  type {Entity}ListResponse,
+  type {Entity},
+} from '@/lib/schemas/{entity}-schema'
+
+export async function get{Entity}List(query: {Entity}Query): Promise<{Entity}ListResponse> {
+  try {
+    const queryString = buildQueryString(query)
+    const response = await api{Entity}Instance.get(`${API_PATHS.{ENTITY}.LIST}${queryString}`)
+    return {entity}ListResponseSchema.parse(response.data)
+  } catch (error) {
+    console.error('Failed to fetch {entity} list:', error)
+    throw new Error('Failed to fetch {entity} list')
+  }
+}
+
+export async function get{Entity}ById(id: string): Promise<{Entity} | null> {
+  try {
+    const response = await api{Entity}Instance.get(API_PATHS.{ENTITY}.GET_BY_ID(id))
+    return {entity}Schema.parse(response.data)
+  } catch (error) {
+    console.error(`Failed to fetch {entity} with ID ${id}:`, error)
+    return null
+  }
+}
+```
+
+### Step 3: Create List Page (Server Component)
+
+```typescript
+// src/app/{entity}/page.tsx
+import { get{Entity}List } from '@/server/functions/{entity}-functions'
+import { {Entity}ListView } from '@/pages/{entity}/views/{entity}-list-view'
+
+interface {Entity}ListPageProps {
+  searchParams: Promise<{
+    page?: string
+    limit?: string
+    sortBy?: string
+    sortOrder?: string
+    search?: string
+  }>
+}
+
+export default async function {Entity}ListPage({ searchParams }: {Entity}ListPageProps) {
+  const params = await searchParams
+
+  // Parse pagination parameters with type safety
+  const page = Number(params.page) || 1
+  const limit = Number(params.limit) || 10
+  const sortBy = (params.sortBy as 'NAME' | 'EMAIL' | 'STATUS') || 'NAME'
+  const sortOrder = (params.sortOrder as 'asc' | 'desc') || 'asc'
+  const search = params.search || ''
+
+  // Fetch data server-side for ISR
+  const {entity}Data = await get{Entity}List({
+    page,
+    limit,
+    sortBy,
+    sortOrder,
+    search,
+  })
+
+  return (
+    <{Entity}ListView
+      {entity}Data={{entity}Data}
+      initialPagination={{
+        page,
+        limit,
+        sortBy,
+        sortOrder,
+        search,
+      }}
+    />
+  )
+}
+
+// Optional: Add metadata for SEO
+export async function generateMetadata({ searchParams }: {Entity}ListPageProps) {
+  const params = await searchParams
+  const page = params.page ? ` - Page ${params.page}` : ''
+  const search = params.search ? ` - "${params.search}"` : ''
+
+  return {
+    title: `{Entity} List${search}${page}`,
+    description: `Browse and search {entity} with server-side pagination`,
+  }
+}
+```
+
+### Step 4: Create Detail Page (Server Component)
+
+```typescript
+// src/app/{entity}/[ID]/page.tsx
+import { get{Entity}ById } from '@/server/functions/{entity}-functions'
+import { {Entity}DetailsView } from '@/pages/{entity}/views/{entity}-details-view'
+import { notFound } from 'next/navigation'
+
+interface {Entity}DetailPageProps {
+  params: Promise<{ ID: string }>
+}
+
+export default async function {Entity}DetailPage({ params }: {Entity}DetailPageProps) {
+  const { ID } = await params
+  const {entity}Data = await get{Entity}ById(ID)
+
+  if (!{entity}Data) {
+    notFound()
+  }
+
+  return <{Entity}DetailsView {entity}Data={{entity}Data} {entity}Id={ID} />
+}
+
+// Optional: Generate static params for ISG
+export async function generateStaticParams() {
+  // Return array of { ID: string } for pre-generation
+  // Only implement if you have a finite, known set of IDs
+  return []
+}
+
+export async function generateMetadata({ params }: {Entity}DetailPageProps) {
+  const { ID } = await params
+  const {entity}Data = await get{Entity}ById(ID)
+
+  return {
+    title: {entity}Data?.NAME || `{Entity} ${ID}`,
+    description: `Details for {entity}: ${entity}Data?.NAME || ID}`,
+  }
+}
+```
+
+### Step 5: Create List View (Client Component)
+
+```typescript
+// src/pages/{entity}/views/{entity}-list-view.tsx
+'use client'
+
+import Link from 'next/link'
+import { useQueryStates, parseAsInteger, parseAsString } from 'nuqs'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { DataTable } from '@/components/ui/data-table'
+import { Plus } from 'lucide-react'
+import { use{Entity}Columns } from '@/pages/{entity}/hooks/use-{entity}-column'
+import type { {Entity}ListResponse } from '@/lib/schemas/{entity}-schema'
+
+interface PaginationState {
+  page: number
+  limit: number
+  sortBy?: string
+  sortOrder?: 'asc' | 'desc'
+  search?: string
+}
+
+interface {Entity}ListViewProps {
+  {entity}Data: {Entity}ListResponse
+  initialPagination: PaginationState
+}
+
+export function {Entity}ListView({ {entity}Data, initialPagination }: {Entity}ListViewProps) {
+  const columns = use{Entity}Columns()
+
+  // Use nuqs for URL state management with ISR page refresh
+  const [urlParams, setUrlParams] = useQueryStates({
+    page: parseAsInteger.withDefault(initialPagination.page),
+    limit: parseAsInteger.withDefault(initialPagination.limit),
+    sortBy: parseAsString.withDefault(initialPagination.sortBy || ''),
+    sortOrder: parseAsString.withDefault(initialPagination.sortOrder || 'asc'),
+    search: parseAsString.withDefault(initialPagination.search || ''),
+  }, { shallow: false }) // ISR: Force page refresh when URL params change
+
+  // Handle pagination changes
+  const handlePaginationChange = (pagination: PaginationState) => {
+    setUrlParams({
+      page: pagination.page,
+      limit: pagination.limit,
+      sortBy: pagination.sortBy || '',
+      sortOrder: pagination.sortOrder || 'asc',
+      search: pagination.search || '',
+    })
+  }
+
+  return (
+    <div className="container mx-auto py-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">{Entity} Management</h1>
+          <p className="text-muted-foreground">
+            Manage and view all {entity} in the system
+          </p>
+        </div>
+        <Button asChild>
+          <Link href="/{entity}/new">
+            <Plus className="h-4 w-4 mr-2" />
+            Add {Entity}
+          </Link>
+        </Button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total {Entity}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{entity}Data.totalcount</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Current Page</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{entity}Data.currentPage</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Pages</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{entity}Data.totalPages</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Data Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{Entity} List</CardTitle>
+          <CardDescription>
+            Manage and view all {entity} in the system
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <DataTable
+            columns={columns}
+            data={{entity}Data.data}
+            enablePagination={true}
+            enableServerPagination={true}
+            defaultPageSize={initialPagination.limit}
+            pageSizeOptions={[10, 20, 30, 40, 50]}
+            serverPaginationInfo={{
+              currentPage: {entity}Data.currentPage,
+              totalPages: {entity}Data.totalPages,
+              totalCount: {entity}Data.totalcount,
+            }}
+            onPaginationChange={handlePaginationChange}
+            initialPagination={{
+              page: urlParams.page,
+              limit: urlParams.limit,
+              sortBy: urlParams.sortBy || undefined,
+              sortOrder: (urlParams.sortOrder as 'asc' | 'desc') || 'asc',
+              search: urlParams.search || undefined,
+            }}
+            enableGlobalFilter={true}
+            searchPlaceholder="Search {entity} by name, email, or status..."
+            emptyStateMessage="No {entity} found matching your search."
+          />
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+```
+
+### Step 6: Create Table Columns Hook
+
+```typescript
+// src/pages/{entity}/hooks/use-{entity}-column.tsx
+'use client'
+
+import Link from 'next/link'
+import { ColumnDef } from '@tanstack/react-table'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { ArrowUpDown, MoreHorizontal, Eye, Edit, Trash } from 'lucide-react'
+import type { {Entity} } from '@/lib/schemas/{entity}-schema'
+
+export function use{Entity}Columns(): ColumnDef<{Entity}>[] {
+  const getStatusVariant = (status: string) => {
+    return status === 'ACTIVE' ? 'default' : 'secondary'
+  }
+
+  const get{Entity}Initials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+  }
+
+  const columns: ColumnDef<{Entity}>[] = [
+    {
+      accessorKey: 'NAME',
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="h-8 px-2"
+          >
+            Name
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        )
+      },
+      cell: ({ row }) => {
+        const {entity} = row.original
+        return (
+          <div className="flex items-center space-x-3">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback className="text-xs">
+                {get{Entity}Initials({entity}.NAME)}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <div className="font-medium">{entity}.NAME</div>
+            </div>
+          </div>
+        )
+      },
+      enableSorting: true,
+    },
+    {
+      accessorKey: 'EMAIL',
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="h-8 px-2"
+          >
+            Email
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        )
+      },
+      cell: ({ row }) => {
+        const email = row.getValue('EMAIL') as string
+        return <div className="text-muted-foreground">{email}</div>
+      },
+      enableSorting: true,
+    },
+    {
+      accessorKey: 'STATUS',
+      header: 'Status',
+      cell: ({ row }) => {
+        const status = row.getValue('STATUS') as string
+        return (
+          <Badge variant={getStatusVariant(status)}>
+            {status}
+          </Badge>
+        )
+      },
+      enableSorting: true,
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      cell: ({ row }) => {
+        const {entity} = row.original
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link href={`/{entity}/${entity}.ID`}>
+                  <Eye className="h-4 w-4 mr-2" />
+                  View Details
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={`/{entity}/${entity}.ID/edit`}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive">
+                <Trash className="h-4 w-4 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )
+      },
+      enableSorting: false,
+    },
+  ]
+
+  return columns
+}
+```
+
+### Step 7: Create Detail View (Client Component)
+
+```typescript
+// src/pages/{entity}/views/{entity}-details-view.tsx
+'use client'
+
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { ArrowLeft, Edit, Trash } from 'lucide-react'
+import type { {Entity} } from '@/lib/schemas/{entity}-schema'
+
+interface {Entity}DetailsViewProps {
+  {entity}Data: {Entity}
+  {entity}Id: string
+}
+
+export function {Entity}DetailsView({ {entity}Data, {entity}Id }: {Entity}DetailsViewProps) {
+  const get{Entity}Initials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+  }
+
+  const getStatusVariant = (status: string) => {
+    return status === 'ACTIVE' ? 'default' : 'secondary'
+  }
+
+  return (
+    <div className="container mx-auto py-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/{entity}">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to List
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">{entity}Data.NAME</h1>
+            <p className="text-muted-foreground">
+              {Entity} Details
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" asChild>
+            <Link href={`/{entity}/${entity}Id/edit`}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit
+            </Link>
+          </Button>
+          <Button variant="destructive">
+            <Trash className="h-4 w-4 mr-2" />
+            Delete
+          </Button>
+        </div>
+      </div>
+
+      {/* Profile Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center space-x-4">
+            <Avatar className="h-16 w-16">
+              <AvatarFallback className="text-lg">
+                {get{Entity}Initials({entity}Data.NAME)}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <CardTitle className="text-2xl">{entity}Data.NAME</CardTitle>
+              <CardDescription>{entity}Data.EMAIL</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+      </Card>
+
+      {/* Details Grid */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Basic Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Basic Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Name</label>
+              <p className="text-sm">{entity}Data.NAME</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Email</label>
+              <p className="text-sm">{entity}Data.EMAIL</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Status</label>
+              <div className="mt-1">
+                <Badge variant={getStatusVariant({entity}Data.STATUS)}>
+                  {entity}Data.STATUS
+                </Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* System Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle>System Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">ID</label>
+              <p className="text-sm font-mono">{entity}Data.ID</p>
+            </div>
+            {entity}Data.CREATED_AT && (
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Created At</label>
+                <p className="text-sm">{new Date({entity}Data.CREATED_AT).toLocaleString()}</p>
+              </div>
+            )}
+            {entity}Data.UPDATED_AT && (
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Updated At</label>
+                <p className="text-sm">{new Date({entity}Data.UPDATED_AT).toLocaleString()}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
+```
+
+## Key Principles
+
+### 1. ISR Optimization
+
+- **Server Components**: All data fetching happens server-side
+- **nuqs with shallow: false**: Forces page refresh for ISR cache updates
+- **No Client API Calls**: Maintains ISR benefits and optimal caching
+
+### 2. Type Safety
+
+- **Zod Schemas**: Runtime validation and TypeScript types
+- **DRY Principle**: Base schemas extended for different use cases
+- **Type-Safe URL Params**: nuqs parsers ensure correct types
+
+### 3. Code Modularity
+
+- **Separation of Concerns**: Server/client components have clear responsibilities
+- **Reusable Components**: DataTable, hooks, and views can be reused
+- **Consistent Structure**: Same pattern across all entities
+
+### 4. Performance
+
+- **ISR Caching**: Pages cached and revalidated automatically
+- **Server-Side Rendering**: SEO-friendly and fast initial loads
+- **Optimized Bundle**: Client components only contain UI logic
+
+## Usage Template
+
+To create a new entity page:
+
+1. **Replace placeholders**:
+
+   - `{entity}` → lowercase entity name (e.g., `products`)
+   - `{Entity}` → PascalCase entity name (e.g., `Products`)
+   - `{ENTITY}` → UPPERCASE entity name (e.g., `PRODUCTS`)
+
+2. **Customize fields** in schemas based on your entity structure
+
+3. **Update API paths** in API_PATHS constant
+
+4. **Modify table columns** based on entity properties
+
+5. **Adjust detail view** fields and layout
+
+## Checklist
+
+- [ ] Zod schemas created with base schema pattern
+- [ ] Server functions implemented (no 'use server')
+- [ ] Server actions created for mutations (with 'use server')
+- [ ] API paths defined in constants
+- [ ] List page (Server Component) created
+- [ ] Detail page (Server Component) created
+- [ ] List view (Client Component) with nuqs shallow: false
+- [ ] Detail view (Client Component) created
+- [ ] Table columns hook implemented
+- [ ] DataTable configured with server pagination
+- [ ] Navigation links between pages
+- [ ] Metadata for SEO optimization
+- [ ] Error handling with notFound()
+- [ ] Loading and empty states
+- [ ] Responsive design implemented
+
+This pattern ensures optimal ISR performance, excellent SEO, type safety, and maintainable code structure.

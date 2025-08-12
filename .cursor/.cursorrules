@@ -8,8 +8,38 @@ Quick index of rule files under `./rules/`.
   - Globs: `**/*.{ts,tsx,js,jsx}`; Always apply: `true`
 
 - **Folder Structure Rules**: Keep code organized by the project layout and import layering
+
   - File: [rules/folder-strecture.mdc](rules/folder-strecture.mdc)
   - Globs: `**/*`; Always apply: `true`
+
+- **Axios Instance Rules**: Standardized API client setup and environment variable management
+
+  - File: [rules/axios-instance.mdc](rules/axios-instance.mdc)
+  - Globs: `src/api/**/*.ts`; Always apply: `false`
+
+- **Zod Schema Generation**: Create type-safe schemas from JSON using DRY principles and base schema extension
+
+  - File: [rules/zod-schema-generation.mdc](rules/zod-schema-generation.mdc)
+  - Globs: `src/lib/schemas/**/*.ts`; Always apply: `false`
+
+- **Server CRUD Pattern**: Separation of queries (functions) and mutations (actions) with type safety
+
+  - File: [rules/server-crud-pattern.mdc](rules/server-crud-pattern.mdc)
+  - Globs: `src/server/**/*.ts`; Always apply: `false`
+
+- **ISR Server-Side Pagination**: Complete pattern for list/detail pages with ISR, nuqs, and server-side pagination
+
+  - File: [rules/isr-server-pagination.mdc](rules/isr-server-pagination.mdc)
+  - Globs: `src/app/**/page.tsx`, `src/pages/**/views/*.tsx`, `src/pages/**/hooks/*.tsx`; Always apply: `false`
+
+- **Delete Mutation Pattern**: Safe delete operations with confirmation modals, custom hooks, and proper error handling
+
+  - File: [rules/delete-mutation-pattern.mdc](rules/delete-mutation-pattern.mdc)
+  - Globs: `src/pages/**/views/*.tsx`, `src/pages/**/hooks/*.tsx`, `src/server/actions/*.ts`, `src/components/common/*.tsx`; Always apply: `false`
+
+- **Form Mutation Pattern**: Create and update forms with React Hook Form, Zod validation, and unified component architecture
+  - File: [rules/form-mutation-pattern.mdc](rules/form-mutation-pattern.mdc)
+  - Globs: `src/pages/**/views/*-create-edit-view.tsx`, `src/app/**/new/page.tsx`, `src/app/**/[*]/edit/page.tsx`, `src/server/actions/*.ts`; Always apply: `false`
 
 Usage:
 

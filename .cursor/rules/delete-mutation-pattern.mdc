@@ -1,0 +1,931 @@
+---
+alwaysApply: false
+---
+
+# Delete Mutation Pattern
+
+## Purpose
+
+This rule defines the complete pattern for implementing delete functionality with confirmation modals, custom hooks, and proper error handling. Use this pattern for safe and user-friendly delete operations across all entities.
+
+## When to Use
+
+- Implementing delete functionality for any entity (users, products, orders, etc.)
+- Need confirmation before destructive operations
+- Want consistent UX for delete operations
+- Require proper error handling and user feedback
+- Need to maintain ISR compatibility after deletions
+
+## Architecture Overview
+
+### Component Structure
+
+```
+Delete Flow Components:
+├── DeleteConfirmationModal          # Reusable confirmation modal
+├── Entity List View                 # Uses custom hooks for state
+├── Entity Columns Hook             # Handles delete trigger
+└── Entity Actions                  # Server-side delete implementation
+```
+
+### Hook Dependencies
+
+```
+Custom Hooks Required:
+├── useSelectedRow<EntityType>      # Manages selected item state
+├── useBoolean                      # Manages modal open/close state
+└── toast (from sonner)            # User feedback notifications
+```
+
+## Implementation Steps
+
+### Step 1: Create DeleteConfirmationModal (Reusable)
+
+```typescript
+// src/components/common/delete-confirmation-modal.tsx
+'use client'
+
+import { AlertTriangle } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalDescription,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal'
+
+interface DeleteConfirmationModalProps {
+  message: string
+  isOpen: boolean
+  onClose: () => void
+  onDelete: () => void
+  isLoading?: boolean
+  title?: string
+}
+
+export function DeleteConfirmationModal({
+  message,
+  isOpen,
+  onClose,
+  onDelete,
+  isLoading = false,
+  title = 'Confirm Deletion',
+}: DeleteConfirmationModalProps) {
+  return (
+    <ResponsiveModal
+      onOpenChange={onClose}
+      open={isOpen}
+    >
+      <ResponsiveModalContent className='sm:max-w-md'>
+        <ResponsiveModalHeader>
+          <div className='flex items-center gap-3'>
+            <div className='flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20'>
+              <AlertTriangle className='h-5 w-5 text-red-600 dark:text-red-400' />
+            </div>
+            <div>
+              <ResponsiveModalTitle className='text-left'>
+                {title}
+              </ResponsiveModalTitle>
+              <ResponsiveModalDescription className='text-left'>
+                This action cannot be undone.
+              </ResponsiveModalDescription>
+            </div>
+          </div>
+        </ResponsiveModalHeader>
+
+        <div className='space-y-4'>
+          <p className='text-muted-foreground text-sm'>{message}</p>
+
+          <div className='flex justify-end gap-3'>
+            <Button
+              disabled={isLoading}
+              onClick={onClose}
+              variant='outline'
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={isLoading}
+              onClick={onDelete}
+              variant='destructive'
+            >
+              {isLoading ? 'Deleting...' : 'Delete'}
+            </Button>
+          </div>
+        </div>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
+  )
+}
+```
+
+### Step 2: Update Entity Columns Hook
+
+```typescript
+// src/pages/{entity}/hooks/use-{entity}-column.tsx
+'use client';
+
+import { Trash, MoreHorizontal, /* other icons */ } from 'lucide-react';
+import { DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import type { UseBooleanReturn } from '@/hooks/use-boolean';
+import type { UseSelectedRowReturn } from '@/hooks/use-selected-row';
+import type { EntityType } from '@/lib/schemas/{entity}-schema';
+
+interface Use{Entity}ColumnsProps {
+  selected: UseSelectedRowReturn<EntityType>;
+  confirm: UseBooleanReturn;
+}
+
+export function use{Entity}Columns({
+  selected,
+  confirm,
+}: Use{Entity}ColumnsProps): ColumnDef<EntityType>[] {
+
+  // ... existing column definitions ...
+
+  // Actions column with delete functionality
+  {
+    id: 'actions',
+    header: 'Actions',
+    cell: ({ row }) => {
+      const entity = row.original;
+
+      return (
+        <div className="flex items-center justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="h-8 w-8 p-0" variant="ghost">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[160px]">
+              {/* Other menu items (View, Edit) */}
+              <DropdownMenuItem asChild>
+                <Link href={`/{entity}/${entity.ID}`}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  View Details
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={`/{entity}/${entity.ID}/edit`}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit {Entity}
+                </Link>
+              </DropdownMenuItem>
+
+              {/* Delete separator and action */}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="cursor-pointer text-destructive focus:text-destructive"
+                onClick={() => {
+                  selected.setRow(entity);
+                  confirm.onTrue();
+                }}
+              >
+                <Trash className="mr-2 h-4 w-4" />
+                Delete {Entity}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      );
+    },
+    enableSorting: false,
+  }
+
+  return columns;
+}
+```
+
+### Step 3: Update Entity List View
+
+```typescript
+// src/pages/{entity}/views/{entity}-list-view.tsx
+'use client';
+
+import { toast } from 'sonner';
+import { DeleteConfirmationModal } from '@/components/common/delete-confirmation-modal';
+import { useBoolean } from '@/hooks/use-boolean';
+import { useSelectedRow } from '@/hooks/use-selected-row';
+import type { EntityType, EntityListResponse } from '@/lib/schemas/{entity}-schema';
+import { use{Entity}Columns } from '@/pages/{entity}/hooks/use-{entity}-column';
+import { delete{Entity} } from '@/server/actions/{entity}-actions';
+
+interface {Entity}ListViewProps {
+  {entity}Data: EntityListResponse;
+  initialPagination: PaginationState;
+}
+
+export function {Entity}ListView({ {entity}Data, initialPagination }: {Entity}ListViewProps) {
+  // Custom hooks for delete functionality
+  const selected = useSelectedRow<EntityType>();
+  const confirm = useBoolean(false);
+
+  // Get table columns with delete functionality
+  const columns = use{Entity}Columns({ selected, confirm });
+
+  // ... existing pagination and other logic ...
+
+  // Handle delete confirmation
+  const handleConfirmDelete = async () => {
+    if (!selected.row) {
+      return;
+    }
+
+    try {
+      const response = await delete{Entity}(selected.row.ID);
+
+      if (!response.success) {
+        toast.error(response.error || 'Failed to delete {entity}');
+        return;
+      }
+
+      toast.success('{Entity} deleted successfully');
+      confirm.onFalse();
+      selected.reset();
+
+      // Optional: Trigger page refresh for ISR (if needed)
+      // window.location.reload();
+    } catch {
+      toast.error('Failed to delete {entity}');
+    }
+  };
+
+  return (
+    <div className="container mx-auto space-y-6 py-6">
+      {/* ... existing component content ... */}
+
+      {/* DataTable component */}
+      <DataTable
+        columns={columns}
+        data={{entity}Data.data}
+        // ... other props
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={confirm.value}
+        message={`Are you sure you want to delete "${selected.row?.NAME}"? This action cannot be undone.`}
+        onClose={() => {
+          confirm.onFalse();
+          selected.reset();
+        }}
+        onDelete={handleConfirmDelete}
+        title="Delete {Entity}"
+      />
+    </div>
+  );
+}
+```
+
+### Step 4: Server Action Implementation
+
+```typescript
+// src/server/actions/{entity}-actions.ts
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { api{Entity}Instance } from '@/api/{entity}-api';
+import { {ENTITY}_PATHS } from '@/lib/api-paths';
+import {
+  {entity}DeleteResponseSchema,
+  type {Entity}DeleteResponse,
+} from '@/lib/schemas/{entity}-schema';
+
+type ActionResult<T = unknown> = {
+  success: true;
+  data: T;
+} | {
+  success: false;
+  error: string;
+};
+
+export async function delete{Entity}(entityId: string): Promise<ActionResult<{Entity}DeleteResponse>> {
+  try {
+    // Validate input
+    if (!entityId || typeof entityId !== 'string') {
+      return {
+        success: false,
+        error: 'Invalid {entity} ID provided',
+      };
+    }
+
+    // Make API call
+    const response = await api{Entity}Instance.delete({ENTITY}_PATHS.DELETE(entityId));
+
+    // Validate response
+    const validatedData = {entity}DeleteResponseSchema.parse(response.data);
+
+    // Revalidate relevant paths for ISR
+    revalidatePath('/{entity}');
+    revalidatePath(`/{entity}/${entityId}`);
+
+    return {
+      success: true,
+      data: validatedData,
+    };
+  } catch (error) {
+    console.error(`Failed to delete {entity} ${entityId}:`, error);
+
+    if (error instanceof Error) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+
+    return {
+      success: false,
+      error: 'Failed to delete {entity}',
+    };
+  }
+}
+```
+
+### Step 5: Schema Updates (if needed)
+
+```typescript
+// src/lib/schemas/{entity}-schema.ts
+import { z } from 'zod';
+
+// ... existing schemas ...
+
+// Delete response schema
+export const {entity}DeleteResponseSchema = z.object({
+  message: z.string(),
+  deletedId: z.string(),
+});
+
+// Export type
+export type {Entity}DeleteResponse = z.infer<typeof {entity}DeleteResponseSchema>;
+```
+
+## Key Principles
+
+### 1. User Experience
+
+- **Visual Warning**: AlertTriangle icon with red accent colors
+- **Clear Messaging**: Show entity name in confirmation message
+- **Loading States**: Disable buttons during deletion process
+- **Immediate Feedback**: Toast notifications for success/error
+- **State Reset**: Clear selection and close modal after action
+
+### 2. Error Handling
+
+- **Input Validation**: Check for valid entity ID
+- **API Error Handling**: Proper try/catch with user-friendly messages
+- **Type Safety**: Zod schema validation for responses
+- **Graceful Degradation**: Generic error messages when specifics fail
+
+### 3. State Management
+
+- **Custom Hooks**: `useSelectedRow` and `useBoolean` for clean state
+- **Separation of Concerns**: Hooks handle state, components handle UI
+- **Reset Logic**: Proper cleanup after successful/failed operations
+
+### 4. ISR Compatibility
+
+- **Server Actions**: Use 'use server' directive for mutations
+- **Path Revalidation**: `revalidatePath` for cache invalidation
+- **Optional Refresh**: Page reload if immediate UI update needed
+
+## Usage Template
+
+To implement delete functionality for a new entity:
+
+### 1. Replace Placeholders
+
+- `{entity}` → lowercase entity name (e.g., `products`)
+- `{Entity}` → PascalCase entity name (e.g., `Products`)
+- `{ENTITY}` → UPPERCASE entity name (e.g., `PRODUCTS`)
+- `EntityType` → actual entity type (e.g., `Product`)
+
+### 2. Update Entity-Specific Fields
+
+- Replace `NAME` with appropriate display field
+- Update `ID` field name if different
+- Customize confirmation message
+- Adjust API paths and endpoints
+
+### 3. Add Required Dependencies
+
+```typescript
+// In list view component
+import { toast } from 'sonner'
+import { DeleteConfirmationModal } from '@/components/common/delete-confirmation-modal'
+import { useBoolean } from '@/hooks/use-boolean'
+import { useSelectedRow } from '@/hooks/use-selected-row'
+```
+
+### 4. Server Action Setup
+
+- Ensure delete endpoint exists in API paths
+- Add proper error handling for entity-specific errors
+- Include relevant path revalidation
+
+## Checklist
+
+- [ ] DeleteConfirmationModal component created (reusable)
+- [ ] Entity columns hook updated with delete functionality
+- [ ] Entity list view updated with hooks and modal
+- [ ] Server action implemented with proper error handling
+- [ ] Delete response schema defined (if needed)
+- [ ] API paths include DELETE endpoint
+- [ ] Toast notifications working
+- [ ] Modal state management working
+- [ ] Error handling covers edge cases
+- [ ] ISR revalidation paths configured
+- [ ] Loading states implemented
+- [ ] Accessibility considerations met
+- [ ] Responsive design maintained
+
+## Best Practices
+
+### Do's
+
+- ✅ Always show confirmation before deletion
+- ✅ Use descriptive confirmation messages
+- ✅ Implement loading states during operations
+- ✅ Provide clear success/error feedback
+- ✅ Reset component state after operations
+- ✅ Validate inputs on server side
+- ✅ Use proper HTTP status codes
+- ✅ Implement proper error boundaries
+
+### Don'ts
+
+- ❌ Never delete without confirmation
+- ❌ Don't expose internal error details to users
+- ❌ Don't forget to handle loading states
+- ❌ Don't skip input validation
+- ❌ Don't forget ISR cache revalidation
+- ❌ Don't hardcode entity names in reusable components
+- ❌ Don't ignore accessibility requirements
+
+This pattern ensures safe, consistent, and user-friendly delete operations across your entire application while maintaining ISR compatibility and proper error handling.
+
+# Delete Mutation Pattern
+
+## Purpose
+
+This rule defines the complete pattern for implementing delete functionality with confirmation modals, custom hooks, and proper error handling. Use this pattern for safe and user-friendly delete operations across all entities.
+
+## When to Use
+
+- Implementing delete functionality for any entity (users, products, orders, etc.)
+- Need confirmation before destructive operations
+- Want consistent UX for delete operations
+- Require proper error handling and user feedback
+- Need to maintain ISR compatibility after deletions
+
+## Architecture Overview
+
+### Component Structure
+
+```
+Delete Flow Components:
+├── DeleteConfirmationModal          # Reusable confirmation modal
+├── Entity List View                 # Uses custom hooks for state
+├── Entity Columns Hook             # Handles delete trigger
+└── Entity Actions                  # Server-side delete implementation
+```
+
+### Hook Dependencies
+
+```
+Custom Hooks Required:
+├── useSelectedRow<EntityType>      # Manages selected item state
+├── useBoolean                      # Manages modal open/close state
+└── toast (from sonner)            # User feedback notifications
+```
+
+## Implementation Steps
+
+### Step 1: Create DeleteConfirmationModal (Reusable)
+
+```typescript
+// src/components/common/delete-confirmation-modal.tsx
+'use client'
+
+import { AlertTriangle } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalDescription,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal'
+
+interface DeleteConfirmationModalProps {
+  message: string
+  isOpen: boolean
+  onClose: () => void
+  onDelete: () => void
+  isLoading?: boolean
+  title?: string
+}
+
+export function DeleteConfirmationModal({
+  message,
+  isOpen,
+  onClose,
+  onDelete,
+  isLoading = false,
+  title = 'Confirm Deletion',
+}: DeleteConfirmationModalProps) {
+  return (
+    <ResponsiveModal
+      onOpenChange={onClose}
+      open={isOpen}
+    >
+      <ResponsiveModalContent className='sm:max-w-md'>
+        <ResponsiveModalHeader>
+          <div className='flex items-center gap-3'>
+            <div className='flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20'>
+              <AlertTriangle className='h-5 w-5 text-red-600 dark:text-red-400' />
+            </div>
+            <div>
+              <ResponsiveModalTitle className='text-left'>
+                {title}
+              </ResponsiveModalTitle>
+              <ResponsiveModalDescription className='text-left'>
+                This action cannot be undone.
+              </ResponsiveModalDescription>
+            </div>
+          </div>
+        </ResponsiveModalHeader>
+
+        <div className='space-y-4'>
+          <p className='text-muted-foreground text-sm'>{message}</p>
+
+          <div className='flex justify-end gap-3'>
+            <Button
+              disabled={isLoading}
+              onClick={onClose}
+              variant='outline'
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={isLoading}
+              onClick={onDelete}
+              variant='destructive'
+            >
+              {isLoading ? 'Deleting...' : 'Delete'}
+            </Button>
+          </div>
+        </div>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
+  )
+}
+```
+
+### Step 2: Update Entity Columns Hook
+
+```typescript
+// src/pages/{entity}/hooks/use-{entity}-column.tsx
+'use client';
+
+import { Trash, MoreHorizontal, /* other icons */ } from 'lucide-react';
+import { DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import type { UseBooleanReturn } from '@/hooks/use-boolean';
+import type { UseSelectedRowReturn } from '@/hooks/use-selected-row';
+import type { EntityType } from '@/lib/schemas/{entity}-schema';
+
+interface Use{Entity}ColumnsProps {
+  selected: UseSelectedRowReturn<EntityType>;
+  confirm: UseBooleanReturn;
+}
+
+export function use{Entity}Columns({
+  selected,
+  confirm,
+}: Use{Entity}ColumnsProps): ColumnDef<EntityType>[] {
+
+  // ... existing column definitions ...
+
+  // Actions column with delete functionality
+  {
+    id: 'actions',
+    header: 'Actions',
+    cell: ({ row }) => {
+      const entity = row.original;
+
+      return (
+        <div className="flex items-center justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="h-8 w-8 p-0" variant="ghost">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[160px]">
+              {/* Other menu items (View, Edit) */}
+              <DropdownMenuItem asChild>
+                <Link href={`/{entity}/${entity.ID}`}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  View Details
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={`/{entity}/${entity.ID}/edit`}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit {Entity}
+                </Link>
+              </DropdownMenuItem>
+
+              {/* Delete separator and action */}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="cursor-pointer text-destructive focus:text-destructive"
+                onClick={() => {
+                  selected.setRow(entity);
+                  confirm.onTrue();
+                }}
+              >
+                <Trash className="mr-2 h-4 w-4" />
+                Delete {Entity}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      );
+    },
+    enableSorting: false,
+  }
+
+  return columns;
+}
+```
+
+### Step 3: Update Entity List View
+
+```typescript
+// src/pages/{entity}/views/{entity}-list-view.tsx
+'use client';
+
+import { toast } from 'sonner';
+import { DeleteConfirmationModal } from '@/components/common/delete-confirmation-modal';
+import { useBoolean } from '@/hooks/use-boolean';
+import { useSelectedRow } from '@/hooks/use-selected-row';
+import type { EntityType, EntityListResponse } from '@/lib/schemas/{entity}-schema';
+import { use{Entity}Columns } from '@/pages/{entity}/hooks/use-{entity}-column';
+import { delete{Entity} } from '@/server/actions/{entity}-actions';
+
+interface {Entity}ListViewProps {
+  {entity}Data: EntityListResponse;
+  initialPagination: PaginationState;
+}
+
+export function {Entity}ListView({ {entity}Data, initialPagination }: {Entity}ListViewProps) {
+  // Custom hooks for delete functionality
+  const selected = useSelectedRow<EntityType>();
+  const confirm = useBoolean(false);
+
+  // Get table columns with delete functionality
+  const columns = use{Entity}Columns({ selected, confirm });
+
+  // ... existing pagination and other logic ...
+
+  // Handle delete confirmation
+  const handleConfirmDelete = async () => {
+    if (!selected.row) {
+      return;
+    }
+
+    try {
+      const response = await delete{Entity}(selected.row.ID);
+
+      if (!response.success) {
+        toast.error(response.error || 'Failed to delete {entity}');
+        return;
+      }
+
+      toast.success('{Entity} deleted successfully');
+      confirm.onFalse();
+      selected.reset();
+
+      // Optional: Trigger page refresh for ISR (if needed)
+      // window.location.reload();
+    } catch {
+      toast.error('Failed to delete {entity}');
+    }
+  };
+
+  return (
+    <div className="container mx-auto space-y-6 py-6">
+      {/* ... existing component content ... */}
+
+      {/* DataTable component */}
+      <DataTable
+        columns={columns}
+        data={{entity}Data.data}
+        // ... other props
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={confirm.value}
+        message={`Are you sure you want to delete "${selected.row?.NAME}"? This action cannot be undone.`}
+        onClose={() => {
+          confirm.onFalse();
+          selected.reset();
+        }}
+        onDelete={handleConfirmDelete}
+        title="Delete {Entity}"
+      />
+    </div>
+  );
+}
+```
+
+### Step 4: Server Action Implementation
+
+```typescript
+// src/server/actions/{entity}-actions.ts
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { api{Entity}Instance } from '@/api/{entity}-api';
+import { {ENTITY}_PATHS } from '@/lib/api-paths';
+import {
+  {entity}DeleteResponseSchema,
+  type {Entity}DeleteResponse,
+} from '@/lib/schemas/{entity}-schema';
+
+type ActionResult<T = unknown> = {
+  success: true;
+  data: T;
+} | {
+  success: false;
+  error: string;
+};
+
+export async function delete{Entity}(entityId: string): Promise<ActionResult<{Entity}DeleteResponse>> {
+  try {
+    // Validate input
+    if (!entityId || typeof entityId !== 'string') {
+      return {
+        success: false,
+        error: 'Invalid {entity} ID provided',
+      };
+    }
+
+    // Make API call
+    const response = await api{Entity}Instance.delete({ENTITY}_PATHS.DELETE(entityId));
+
+    // Validate response
+    const validatedData = {entity}DeleteResponseSchema.parse(response.data);
+
+    // Revalidate relevant paths for ISR
+    revalidatePath('/{entity}');
+    revalidatePath(`/{entity}/${entityId}`);
+
+    return {
+      success: true,
+      data: validatedData,
+    };
+  } catch (error) {
+    console.error(`Failed to delete {entity} ${entityId}:`, error);
+
+    if (error instanceof Error) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+
+    return {
+      success: false,
+      error: 'Failed to delete {entity}',
+    };
+  }
+}
+```
+
+### Step 5: Schema Updates (if needed)
+
+```typescript
+// src/lib/schemas/{entity}-schema.ts
+import { z } from 'zod';
+
+// ... existing schemas ...
+
+// Delete response schema
+export const {entity}DeleteResponseSchema = z.object({
+  message: z.string(),
+  deletedId: z.string(),
+});
+
+// Export type
+export type {Entity}DeleteResponse = z.infer<typeof {entity}DeleteResponseSchema>;
+```
+
+## Key Principles
+
+### 1. User Experience
+
+- **Visual Warning**: AlertTriangle icon with red accent colors
+- **Clear Messaging**: Show entity name in confirmation message
+- **Loading States**: Disable buttons during deletion process
+- **Immediate Feedback**: Toast notifications for success/error
+- **State Reset**: Clear selection and close modal after action
+
+### 2. Error Handling
+
+- **Input Validation**: Check for valid entity ID
+- **API Error Handling**: Proper try/catch with user-friendly messages
+- **Type Safety**: Zod schema validation for responses
+- **Graceful Degradation**: Generic error messages when specifics fail
+
+### 3. State Management
+
+- **Custom Hooks**: `useSelectedRow` and `useBoolean` for clean state
+- **Separation of Concerns**: Hooks handle state, components handle UI
+- **Reset Logic**: Proper cleanup after successful/failed operations
+
+### 4. ISR Compatibility
+
+- **Server Actions**: Use 'use server' directive for mutations
+- **Path Revalidation**: `revalidatePath` for cache invalidation
+- **Optional Refresh**: Page reload if immediate UI update needed
+
+## Usage Template
+
+To implement delete functionality for a new entity:
+
+### 1. Replace Placeholders
+
+- `{entity}` → lowercase entity name (e.g., `products`)
+- `{Entity}` → PascalCase entity name (e.g., `Products`)
+- `{ENTITY}` → UPPERCASE entity name (e.g., `PRODUCTS`)
+- `EntityType` → actual entity type (e.g., `Product`)
+
+### 2. Update Entity-Specific Fields
+
+- Replace `NAME` with appropriate display field
+- Update `ID` field name if different
+- Customize confirmation message
+- Adjust API paths and endpoints
+
+### 3. Add Required Dependencies
+
+```typescript
+// In list view component
+import { toast } from 'sonner'
+import { DeleteConfirmationModal } from '@/components/common/delete-confirmation-modal'
+import { useBoolean } from '@/hooks/use-boolean'
+import { useSelectedRow } from '@/hooks/use-selected-row'
+```
+
+### 4. Server Action Setup
+
+- Ensure delete endpoint exists in API paths
+- Add proper error handling for entity-specific errors
+- Include relevant path revalidation
+
+## Checklist
+
+- [ ] DeleteConfirmationModal component created (reusable)
+- [ ] Entity columns hook updated with delete functionality
+- [ ] Entity list view updated with hooks and modal
+- [ ] Server action implemented with proper error handling
+- [ ] Delete response schema defined (if needed)
+- [ ] API paths include DELETE endpoint
+- [ ] Toast notifications working
+- [ ] Modal state management working
+- [ ] Error handling covers edge cases
+- [ ] ISR revalidation paths configured
+- [ ] Loading states implemented
+- [ ] Accessibility considerations met
+- [ ] Responsive design maintained
+
+## Best Practices
+
+### Do's
+
+- ✅ Always show confirmation before deletion
+- ✅ Use descriptive confirmation messages
+- ✅ Implement loading states during operations
+- ✅ Provide clear success/error feedback
+- ✅ Reset component state after operations
+- ✅ Validate inputs on server side
+- ✅ Use proper HTTP status codes
+- ✅ Implement proper error boundaries
+
+### Don'ts
+
+- ❌ Never delete without confirmation
+- ❌ Don't expose internal error details to users
+- ❌ Don't forget to handle loading states
+- ❌ Don't skip input validation
+- ❌ Don't forget ISR cache revalidation
+- ❌ Don't hardcode entity names in reusable components
+- ❌ Don't ignore accessibility requirements
+
+This pattern ensures safe, consistent, and user-friendly delete operations across your entire application while maintaining ISR compatibility and proper error handling.

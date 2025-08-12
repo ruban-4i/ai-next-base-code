@@ -1,0 +1,722 @@
+---
+alwaysApply: false
+---
+
+# Form Mutation Pattern (Create & Update)
+
+## Purpose
+
+This rule defines the complete pattern for implementing create and update forms using React Hook Form with Zod validation. Use this pattern for building type-safe, user-friendly forms that handle both creation and editing of entities with a single reusable component.
+
+## When to Use
+
+- Building create and edit forms for any entity (users, products, orders, etc.)
+- Need type-safe form validation with Zod and React Hook Form
+- Want a single component that handles both create and edit modes
+- Require proper error handling and user feedback
+- Need server-side data fetching for edit mode pre-population
+- Want ISR-compatible form implementations
+
+## Architecture Overview
+
+### Component Structure
+
+```
+Form Flow Components:
+├── Entity Form View                    # Single form component for create/edit
+├── Create Page (Server Component)      # Empty form rendering
+├── Edit Page (Server Component)       # Pre-populated form with fetched data
+└── Entity Actions                     # Server-side create/update mutations
+```
+
+### File Structure Pattern
+
+```
+src/app/{entity}/
+├── new/page.tsx                       # Create page (Server Component)
+├── [ID]/edit/page.tsx                 # Edit page (Server Component)
+src/pages/{entity}/views/
+└── {entity}-create-edit-view.tsx      # Form component (Client Component)
+src/lib/schemas/
+└── {entity}-schema.ts                 # Unified form schema
+src/server/actions/
+└── {entity}-actions.ts               # Create/update server actions
+```
+
+## Implementation Steps
+
+### Step 1: Create Unified Form Schema
+
+```typescript
+// src/lib/schemas/{entity}-schema.ts
+import { z } from 'zod';
+
+/**
+ * Base Entity Schema - Single source of truth
+ */
+const base{Entity}Schema = z.object({
+  ID: z.string().min(1, 'ID is required'),
+  NAME: z.string().min(1, 'Name is required').max(100, 'Name too long'),
+  EMAIL: z.string().email('Must be a valid email address'),
+  STATUS: z.enum(['ACTIVE', 'INACTIVE']),
+  DESCRIPTION: z.string().optional(),
+  CREATED_AT: z.string().optional(),
+  UPDATED_AT: z.string().optional(),
+});
+
+/**
+ * Complete Entity Schema
+ */
+export const {entity}Schema = base{Entity}Schema;
+
+/**
+ * Entity Create Schema - For server actions
+ */
+export const {entity}CreateSchema = base{Entity}Schema.omit({
+  ID: true,
+  CREATED_AT: true,
+  UPDATED_AT: true
+});
+
+/**
+ * Entity Update Schema - For server actions
+ */
+export const {entity}UpdateSchema = base{Entity}Schema
+  .partial()
+  .required({ ID: true });
+
+/**
+ * Unified Entity Form Schema - Used in React Hook Form
+ * Handles both create and edit modes with runtime validation
+ */
+export const {entity}FormSchema = z.object({
+  NAME: z.string().min(1, 'Name is required').max(100, 'Name too long'),
+  EMAIL: z.string().email('Must be a valid email address'),
+  STATUS: z.enum(['ACTIVE', 'INACTIVE']), // Required field, no default
+  DESCRIPTION: z.string().optional(),
+  // Add other fields as needed, avoiding ID and timestamps
+});
+
+// Export types
+export type {Entity} = z.infer<typeof {entity}Schema>;
+export type {Entity}Create = z.infer<typeof {entity}CreateSchema>;
+export type {Entity}Update = z.infer<typeof {entity}UpdateSchema>;
+export type {Entity}Form = z.infer<typeof {entity}FormSchema>;
+```
+
+### Step 2: Create Form Component
+
+```typescript
+// src/pages/{entity}/views/{entity}-create-edit-view.tsx
+'use client';
+
+import { zodResolver } from '@hookform/resolvers/zod';
+import { ArrowLeft, Save, User as EntityIcon } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  type {Entity},
+  type {Entity}Create,
+  type {Entity}Form,
+  type {Entity}Update,
+  {entity}FormSchema,
+} from '@/lib/schemas/{entity}-schema';
+import { paths } from '@/route/paths';
+import { create{Entity}, update{Entity} } from '@/server/actions/{entity}-actions';
+
+interface {Entity}CreateEditViewProps {
+  {entity}Data?: {Entity}; // Present for edit, undefined for create
+  isEdit?: boolean;
+}
+
+export function {Entity}CreateEditView({
+  {entity}Data,
+  isEdit = false,
+}: {Entity}CreateEditViewProps) {
+  const router = useRouter();
+
+  // Default values based on mode
+  const defaultValues: {Entity}Form =
+    isEdit && {entity}Data
+      ? {
+          NAME: {entity}Data.NAME,
+          EMAIL: {entity}Data.EMAIL,
+          STATUS: {entity}Data.STATUS,
+          DESCRIPTION: {entity}Data.DESCRIPTION || '',
+          // Map other fields as needed
+        }
+      : {
+          NAME: '',
+          EMAIL: '',
+          STATUS: 'ACTIVE',
+          DESCRIPTION: '',
+          // Default values for create mode
+        };
+
+  const form = useForm<{Entity}Form>({
+    resolver: zodResolver({entity}FormSchema),
+    defaultValues,
+  });
+
+  // Custom validation (if needed)
+  const validateForm = (values: {Entity}Form): string | null => {
+    // Add any custom validation logic here
+    // Return error message or null if valid
+    return null;
+  };
+
+  const handleEdit = async (values: {Entity}Form, entityId: string) => {
+    return await update{Entity}(entityId, values as Partial<{Entity}Update>);
+  };
+
+  const handleCreate = async (values: {Entity}Form) => {
+    return await create{Entity}(values as {Entity}Create);
+  };
+
+  const handleSuccess = (isEditMode: boolean, entityId?: string) => {
+    toast.success(`{Entity} ${isEditMode ? 'updated' : 'created'} successfully`);
+    const redirectPath =
+      isEditMode && entityId ? paths.{entity}.details(entityId) : paths.{entity}.root;
+    router.push(redirectPath);
+  };
+
+  const handleFormSubmit = async (values: {Entity}Form) => {
+    const response = await (isEdit && {entity}Data
+      ? handleEdit(values, {entity}Data.ID)
+      : handleCreate(values));
+
+    if (!response.success) {
+      const action = isEdit ? 'update' : 'create';
+      throw new Error(response.error || `Failed to ${action} {entity}`);
+    }
+
+    handleSuccess(isEdit, {entity}Data?.ID);
+  };
+
+  const onSubmit = async (values: {Entity}Form) => {
+    const validationError = validateForm(values);
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+
+    try {
+      await handleFormSubmit(values);
+    } catch (error) {
+      const action = isEdit ? 'update' : 'create';
+      const message = error instanceof Error ? error.message : `Failed to ${action} {entity}`;
+      toast.error(message);
+    }
+  };
+
+  const pageTitle = isEdit ? 'Edit {Entity}' : 'Create New {Entity}';
+  const pageDescription = isEdit
+    ? 'Update {entity} information and settings'
+    : 'Add a new {entity} to the system';
+  const submitButtonText = isEdit ? 'Update {Entity}' : 'Create {Entity}';
+  const backPath =
+    isEdit && {entity}Data
+      ? paths.{entity}.details({entity}Data.ID)
+      : paths.{entity}.root;
+
+  return (
+    <div className="container mx-auto space-y-6 py-6">
+      {/* Header */}
+      <div className="flex items-center space-x-4">
+        <Button asChild size="sm" variant="ghost">
+          <Link href={backPath}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Link>
+        </Button>
+        <div>
+          <h1 className="font-bold text-3xl tracking-tight">{pageTitle}</h1>
+          <p className="text-muted-foreground">{pageDescription}</p>
+        </div>
+      </div>
+
+      {/* Form Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center space-x-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+              <EntityIcon className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle>{pageTitle}</CardTitle>
+              <CardDescription>{pageDescription}</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form className="space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* Name Field */}
+                <FormField
+                  control={form.control}
+                  name="NAME"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Name *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter name" {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        The {entity}'s display name
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Email Field */}
+                <FormField
+                  control={form.control}
+                  name="EMAIL"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email Address *</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter email address"
+                          type="email"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Contact email address
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Status Field */}
+                <FormField
+                  control={form.control}
+                  name="STATUS"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status *</FormLabel>
+                      <Select
+                        defaultValue={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="ACTIVE">Active</SelectItem>
+                          <SelectItem value="INACTIVE">Inactive</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Whether the {entity} is active
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Description Field */}
+                <FormField
+                  control={form.control}
+                  name="DESCRIPTION"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter description (optional)"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Optional description or notes
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Form Actions */}
+              <div className="flex justify-end gap-4 border-t pt-6">
+                <Button
+                  onClick={() => router.push(backPath)}
+                  type="button"
+                  variant="outline"
+                >
+                  Cancel
+                </Button>
+                <Button disabled={form.formState.isSubmitting} type="submit">
+                  {form.formState.isSubmitting ? (
+                    'Saving...'
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      {submitButtonText}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+```
+
+### Step 3: Create Server Pages
+
+#### Create Page (Server Component)
+
+```typescript
+// src/app/{entity}/new/page.tsx
+import { {Entity}CreateEditView } from '@/pages/{entity}/views/{entity}-create-edit-view';
+
+export default function {Entity}NewPage() {
+  return <{Entity}CreateEditView isEdit={false} />;
+}
+
+// Generate metadata for SEO
+export function generateMetadata() {
+  return {
+    title: 'Create New {Entity}',
+    description:
+      'Add a new {entity} to the system with all required information',
+  };
+}
+```
+
+#### Edit Page (Server Component)
+
+```typescript
+// src/app/{entity}/[ID]/edit/page.tsx
+import { notFound } from 'next/navigation';
+import { {Entity}CreateEditView } from '@/pages/{entity}/views/{entity}-create-edit-view';
+import { get{Entity}ById } from '@/server/functions/{entity}-functions';
+
+interface {Entity}EditPageProps {
+  params: Promise<{ ID: string }>;
+}
+
+export default async function {Entity}EditPage({ params }: {Entity}EditPageProps) {
+  const { ID } = await params;
+
+  // Fetch entity data server-side
+  const {entity}Data = await get{Entity}ById(ID);
+
+  if (!{entity}Data) {
+    notFound();
+  }
+
+  return <{Entity}CreateEditView isEdit={true} {entity}Data={{entity}Data} />;
+}
+
+// Generate metadata for SEO
+export async function generateMetadata({ params }: {Entity}EditPageProps) {
+  const { ID } = await params;
+  const {entity}Data = await get{Entity}ById(ID);
+
+  return {
+    title: {entity}Data ? `Edit ${entity}Data.NAME}` : 'Edit {Entity}',
+    description: {entity}Data
+      ? `Edit {entity} information for ${entity}Data.NAME}`
+      : 'Edit {entity} information',
+  };
+}
+```
+
+### Step 4: Server Actions
+
+```typescript
+// src/server/actions/{entity}-actions.ts
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { api{Entity}Instance } from '@/api/{entity}-api';
+import { {ENTITY}_PATHS } from '@/lib/api-paths';
+import {
+  {entity}CreateSchema,
+  {entity}Schema,
+  type {Entity}Create,
+  type {Entity}Update,
+  type {Entity},
+} from '@/lib/schemas/{entity}-schema';
+
+type ActionResult<T = unknown> = {
+  success: true;
+  data: T;
+} | {
+  success: false;
+  error: string;
+};
+
+export async function create{Entity}({entity}Data: {Entity}Create): Promise<ActionResult<{Entity}>> {
+  try {
+    // Validate input
+    const validatedData = {entity}CreateSchema.parse({entity}Data);
+
+    // Make API call
+    const response = await api{Entity}Instance.post({ENTITY}_PATHS.CREATE, validatedData);
+
+    // Validate response
+    const createdEntity = {entity}Schema.parse(response.data);
+
+    // Revalidate relevant paths for ISR
+    revalidatePath('/{entity}');
+
+    return {
+      success: true,
+      data: createdEntity,
+    };
+  } catch (error) {
+    console.error('Failed to create {entity}:', error);
+
+    if (error instanceof Error) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+
+    return {
+      success: false,
+      error: 'Failed to create {entity}',
+    };
+  }
+}
+
+export async function update{Entity}(entityId: string, {entity}Data: Partial<{Entity}Update>): Promise<ActionResult<{Entity}>> {
+  try {
+    // Validate input
+    if (!entityId || typeof entityId !== 'string') {
+      return {
+        success: false,
+        error: 'Invalid {entity} ID provided',
+      };
+    }
+
+    // Make API call
+    const response = await api{Entity}Instance.put({ENTITY}_PATHS.UPDATE(entityId), {entity}Data);
+
+    // Validate response
+    const updatedEntity = {entity}Schema.parse(response.data);
+
+    // Revalidate relevant paths for ISR
+    revalidatePath('/{entity}');
+    revalidatePath(`/{entity}/${entityId}`);
+
+    return {
+      success: true,
+      data: updatedEntity,
+    };
+  } catch (error) {
+    console.error(`Failed to update {entity} ${entityId}:`, error);
+
+    if (error instanceof Error) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+
+    return {
+      success: false,
+      error: 'Failed to update {entity}',
+    };
+  }
+}
+```
+
+### Step 5: Update Route Paths
+
+```typescript
+// src/route/paths.ts
+export const paths = {
+  {entity}: {
+    root: '/{entity}',
+    new: '/{entity}/new',
+    edit: (id: string) => `/{entity}/${id}/edit`,
+    details: (id: string) => `/{entity}/${id}`,
+  },
+  // ... other entities
+} as const;
+```
+
+## Key Principles
+
+### 1. Single Component Architecture
+
+- **Unified Form Component**: One component handles both create and edit modes
+- **Mode-Based Behavior**: Different validation, navigation, and data handling based on `isEdit` prop
+- **Smart Defaults**: Pre-populated values for edit, empty values for create
+
+### 2. Type Safety
+
+- **Unified Schema**: Single form schema works with React Hook Form without type conflicts
+- **Runtime Validation**: Custom validation logic based on mode requirements
+- **Server Action Types**: Proper typing for create/update operations
+
+### 3. User Experience
+
+- **Contextual Navigation**: Smart back button behavior based on mode
+- **Loading States**: Proper form submission states with disabled buttons
+- **Error Handling**: Comprehensive validation and user-friendly error messages
+- **Success Feedback**: Toast notifications with appropriate messaging
+
+### 4. ISR Compatibility
+
+- **Server Components**: Data fetching happens server-side for edit mode
+- **Path Revalidation**: Proper cache invalidation after mutations
+- **SEO Optimization**: Dynamic metadata generation for both modes
+
+## Usage Template
+
+To implement forms for a new entity:
+
+### 1. Replace Placeholders
+
+- `{entity}` → lowercase entity name (e.g., `products`)
+- `{Entity}` → PascalCase entity name (e.g., `Products`)
+- `{ENTITY}` → UPPERCASE entity name (e.g., `PRODUCTS`)
+
+### 2. Customize Entity Fields
+
+Update the schema and form fields based on your entity structure:
+
+- Replace `NAME`, `EMAIL`, `STATUS`, `DESCRIPTION` with actual fields
+- Add/remove fields as needed
+- Update validation rules for each field
+- Customize form layout (single column, multi-column, sections)
+
+### 3. Update API Integration
+
+- Ensure API endpoints exist for create/update operations
+- Update API paths in the constants file
+- Configure axios instance for the entity
+
+### 4. Add Custom Validation
+
+Implement entity-specific validation in the `validateForm` function:
+
+```typescript
+const validateForm = (values: EntityForm): string | null => {
+  // Example: Check for duplicate email
+  if (values.EMAIL && isDuplicateEmail(values.EMAIL)) {
+    return 'Email already exists'
+  }
+
+  // Example: Business logic validation
+  if (values.STATUS === 'ACTIVE' && !values.DESCRIPTION) {
+    return 'Description is required for active entities'
+  }
+
+  return null
+}
+```
+
+### 5. Customize Form Fields
+
+Add entity-specific form fields:
+
+```typescript
+{
+  /* Custom field example */
+}
+;<FormField
+  control={form.control}
+  name='CUSTOM_FIELD'
+  render={({ field }) => (
+    <FormItem>
+      <FormLabel>Custom Field *</FormLabel>
+      <FormControl>
+        <Input
+          placeholder='Enter custom value'
+          {...field}
+        />
+      </FormControl>
+      <FormDescription>Description for custom field</FormDescription>
+      <FormMessage />
+    </FormItem>
+  )}
+/>
+```
+
+## Checklist
+
+- [ ] Unified form schema created with proper validation
+- [ ] Form component implemented with create/edit modes
+- [ ] Create page (Server Component) implemented
+- [ ] Edit page (Server Component) with data fetching
+- [ ] Server actions for create/update operations
+- [ ] Route paths updated with new entity routes
+- [ ] API integration configured
+- [ ] Custom validation logic added (if needed)
+- [ ] Form fields customized for entity
+- [ ] Error handling implemented
+- [ ] Loading states configured
+- [ ] Toast notifications working
+- [ ] Navigation flow tested
+- [ ] ISR revalidation configured
+- [ ] SEO metadata added
+- [ ] Responsive design verified
+
+## Best Practices
+
+### Do's
+
+- ✅ Use unified form schema to avoid React Hook Form type conflicts
+- ✅ Implement runtime validation for mode-specific requirements
+- ✅ Handle both success and error cases with user feedback
+- ✅ Use server components for data fetching in edit mode
+- ✅ Implement proper ISR cache revalidation
+- ✅ Add loading states and form submission feedback
+- ✅ Use contextual navigation based on form mode
+- ✅ Validate data on both client and server sides
+
+### Don'ts
+
+- ❌ Don't use union types with React Hook Form (causes type conflicts)
+- ❌ Don't forget to handle empty/optional fields in edit mode
+- ❌ Don't skip error handling for network failures
+- ❌ Don't forget to revalidate ISR paths after mutations
+- ❌ Don't expose sensitive data in form default values
+- ❌ Don't skip input validation on the server side
+- ❌ Don't use client-side data fetching for edit mode
+- ❌ Don't forget to add proper loading states
+
+This pattern ensures type-safe, user-friendly, and maintainable create/update forms across your entire application with optimal ISR performance and proper error handling.

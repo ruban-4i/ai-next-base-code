@@ -1,0 +1,207 @@
+---
+description: Axios Instance Creation Rules - Standardized API client setup
+alwaysApply: false
+---
+
+# Axios Instance Creation Rules
+
+Guidelines for creating consistent and maintainable axios instances for API integrations.
+
+## Environment Variables Setup
+
+### 1. Variable Naming Convention
+
+- Use descriptive names with `_URL` suffix: `{API_NAME}_APPLICATION_URL`
+- Example: `ONLINE_TEST_APPLICATION_URL`, `USER_SERVICE_APPLICATION_URL`
+
+### 2. Environment Files Update Order
+
+1. **Update `.env.example`** - Add variable with empty value
+2. **Update `.env`** - Add variable with actual URL
+3. **Update `src/env.ts`** - Add validation schema
+
+### 3. Server-Side Only Variables (ISR/SSR)
+
+- **Never use `NEXT_PUBLIC_` prefix** for server-side only APIs
+- Add to `server` section in `src/env.ts`
+- Access via `env.{VARIABLE_NAME}` in server components and API routes
+
+```typescript
+// src/env.ts example
+server: {
+  API_NAME_APPLICATION_URL: z.string().url(),
+},
+runtimeEnv: {
+  API_NAME_APPLICATION_URL: process.env.API_NAME_APPLICATION_URL,
+},
+```
+
+## Axios Instance Structure
+
+### 1. File Location and Naming
+
+- **Location**: `src/api/{service-name}-api.ts`
+- **Naming**: Use kebab-case for files, camelCase for exports
+- **Export name**: `{serviceName}Api`
+
+### 2. Standard Template
+
+```typescript
+import axios from 'axios';
+import { env } from '@/env';
+
+/**
+ * Axios instance for {Service Name} API
+ * Server-side only since we're using ISR
+ */
+export const {serviceName}Api = axios.create({
+  baseURL: env.{API_NAME}_APPLICATION_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  timeout: 10000, // 10 seconds timeout
+});
+
+// Request interceptor for adding auth or other headers if needed
+{serviceName}Api.interceptors.request.use(
+  (config) => {
+    // Add any common headers or auth tokens here
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor for handling common errors
+{serviceName}Api.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    // Handle common error scenarios here
+    console.error('{Service Name} API Error:', error.response?.data || error.message);
+    return Promise.reject(error);
+  }
+);
+```
+
+### 3. Required Configuration
+
+- **baseURL**: Always use environment variable
+- **headers**: Set `Content-Type: application/json` by default
+- **timeout**: Set reasonable timeout (10 seconds recommended)
+- **interceptors**: Include both request and response interceptors
+
+## Implementation Checklist
+
+### Environment Setup
+
+- [ ] Add `{API_NAME}_APPLICATION_URL=` to `.env.example`
+- [ ] Add `{API_NAME}_APPLICATION_URL=http://actual-url` to `.env`
+- [ ] Update `src/env.ts` server section with validation
+- [ ] Update `src/env.ts` runtimeEnv section
+
+### Axios Instance Creation
+
+- [ ] Install axios if not present: `npm install axios`
+- [ ] Create `src/api/{service-name}-api.ts`
+- [ ] Export instance as `{serviceName}Api`
+- [ ] Include JSDoc documentation
+- [ ] Add request/response interceptors
+- [ ] Set appropriate timeout
+
+### Usage Examples
+
+```typescript
+// In server components or API routes
+import { onlineTestApi } from '@/api/online-test-api'
+
+// GET request
+const response = await onlineTestApi.get('/endpoint')
+
+// POST request
+const response = await onlineTestApi.post('/endpoint', data)
+```
+
+## Best Practices
+
+### Security
+
+- Never expose sensitive URLs in client-side code
+- Use server-side environment variables for API endpoints
+- Implement proper error handling in interceptors
+
+### Error Handling
+
+- Always include response interceptor for error logging
+- Use descriptive error messages
+- Don't expose internal API details to client
+
+### Performance
+
+- Set reasonable timeouts (10s default)
+- Consider implementing retry logic for critical APIs
+- Use appropriate HTTP methods
+
+### Maintainability
+
+- Follow consistent naming conventions
+- Include comprehensive JSDoc comments
+- Keep interceptor logic simple and focused
+
+## Common Patterns
+
+### Authentication Headers
+
+```typescript
+{
+  serviceName
+}
+Api.interceptors.request.use(config => {
+  const token = getAuthToken() // Your auth logic
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+```
+
+### Retry Logic
+
+```typescript
+{
+  serviceName
+}
+Api.interceptors.response.use(
+  response => response,
+  async error => {
+    if (error.response?.status === 401) {
+      // Handle auth refresh
+    }
+    return Promise.reject(error)
+  }
+)
+```
+
+### Request/Response Logging
+
+```typescript
+{
+  serviceName
+}
+Api.interceptors.request.use(config => {
+  console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`)
+  return config
+})
+```
+
+## Anti-Patterns to Avoid
+
+- ❌ Using `NEXT_PUBLIC_` for server-side only APIs
+- ❌ Hardcoding URLs in axios instances
+- ❌ Missing error handling interceptors
+- ❌ Not setting timeouts
+- ❌ Exposing sensitive API details in error messages
+- ❌ Creating axios instances without proper TypeScript types
+- ❌ Missing JSDoc documentation

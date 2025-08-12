@@ -1,0 +1,359 @@
+---
+description: Zod Schema Generation Rules - Create schemas from JSON data using DRY principles
+globs: 'src/lib/schemas/**/*.ts'
+alwaysApply: false
+---
+
+# Zod Schema Generation Rules
+
+Guidelines for creating maintainable and type-safe Zod schemas from JSON data structures.
+
+## Core Principles
+
+### 1. Single Source of Truth
+
+- Create one **base schema** that defines all field validations
+- All other schemas **extend** from the base schema
+- **Never duplicate** field definitions across schemas
+
+### 2. DRY (Don't Repeat Yourself)
+
+- Use Zod's transformation methods: `.omit()`, `.partial()`, `.required()`, `.extend()`
+- Define validation rules once in the base schema
+- Leverage TypeScript inference for type generation
+
+## Schema Creation Process
+
+### Step 1: Analyze JSON Structure
+
+```json
+// Example API response
+{
+  "data": [
+    {
+      "USER_ID": "667551049f74ee4a41a877cf",
+      "USER_NAME": "user@example.com",
+      "NAME": "John Doe",
+      "PASSWORD": "encrypted_password",
+      "ACTIVE": "Y",
+      "BATCH_NAME": "Optional Field"
+    }
+  ],
+  "currentPage": 1,
+  "totalPages": 1,
+  "totalcount": 9
+}
+```
+
+### Step 2: Identify Field Types and Constraints
+
+- **Required vs Optional**: Check if field appears in all records
+- **Data Types**: String, number, boolean, enum, email, etc.
+- **Validation Rules**: Min/max length, format validation
+- **Business Logic**: Default values, enum constraints
+
+### Step 3: Create Base Schema Template
+
+```typescript
+import { z } from 'zod'
+
+/**
+ * Base {Entity} Schema - Single source of truth for field definitions
+ */
+const base{Entity}Schema = z.object({
+  // Required fields with validation
+  ID_FIELD: z.string().min(1, 'ID is required'),
+  EMAIL_FIELD: z.email('Must be a valid email address'),
+  NAME_FIELD: z.string().min(1, 'Name is required').max(100, 'Name too long'),
+  PASSWORD_FIELD: z.string().min(6, 'Password must be at least 6 characters'),
+  ENUM_FIELD: z.enum(['VALUE1', 'VALUE2']).default('VALUE1'),
+
+  // Optional fields
+  OPTIONAL_FIELD: z.string().optional(),
+  NULLABLE_FIELD: z.string().nullable(),
+})
+```
+
+## Schema Extension Patterns
+
+### CRUD Operation Schemas
+
+```typescript
+/**
+ * Complete {Entity} Schema - Full object from API
+ */
+export const {entity}Schema = base{Entity}Schema
+
+/**
+ * {Entity} Create Schema - For creating new records
+ * Excludes server-generated fields (ID, timestamps)
+ */
+export const {entity}CreateSchema = base{Entity}Schema.omit({
+  ID_FIELD: true,
+  CREATED_AT: true,
+  UPDATED_AT: true
+})
+
+/**
+ * {Entity} Update Schema - For updating existing records
+ * All fields optional except ID
+ */
+export const {entity}UpdateSchema = base{Entity}Schema
+  .partial()
+  .required({ ID_FIELD: true })
+
+/**
+ * {Entity} Partial Update Schema - For PATCH operations
+ * Only the fields being updated (excludes ID)
+ */
+export const {entity}PartialUpdateSchema = base{Entity}Schema
+  .omit({ ID_FIELD: true })
+  .partial()
+```
+
+### Query and Response Schemas
+
+```typescript
+/**
+ * {Entity} Query Schema - For filtering and searching
+ * Excludes sensitive fields, adds pagination/sorting
+ */
+export const {entity}QuerySchema = base{Entity}Schema
+  .omit({ PASSWORD_FIELD: true, SENSITIVE_FIELD: true })
+  .partial()
+  .extend({
+    // Pagination
+    page: z.coerce.number().int().positive().default(1),
+    limit: z.coerce.number().int().positive().max(100).default(10),
+
+    // Sorting
+    sortBy: z.enum(['FIELD1', 'FIELD2', 'FIELD3']).optional(),
+    sortOrder: z.enum(['asc', 'desc']).default('asc'),
+
+    // Search
+    search: z.string().optional(),
+  })
+
+/**
+ * {Entity} List Response Schema - API response with pagination
+ */
+export const {entity}ListResponseSchema = z.object({
+  data: z.array({entity}Schema),
+  currentPage: z.number().int().positive(),
+  totalPages: z.number().int().positive(),
+  totalcount: z.number().int().nonnegative(),
+})
+
+/**
+ * Single {Entity} Response Schema
+ */
+export const {entity}ResponseSchema = z.object({
+  data: {entity}Schema,
+  message: z.string().optional(),
+})
+
+/**
+ * {Entity} Delete Response Schema
+ */
+export const {entity}DeleteResponseSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+  deletedId: z.string().optional(),
+})
+```
+
+### Route Parameter Schemas
+
+```typescript
+/**
+ * {Entity} ID Params Schema - For route parameters
+ */
+export const {entity}ParamsSchema = z.object({
+  ID_FIELD: z.string().min(1, 'ID is required'),
+})
+```
+
+### Form Validation Schemas
+
+```typescript
+/**
+ * {Entity} Form Schema - For form validation with confirmations
+ */
+export const {entity}FormSchema = {entity}CreateSchema
+  .extend({
+    confirmPassword: z.string().min(6, 'Confirm password required'),
+    acceptTerms: z.boolean(),
+  })
+  .refine((data) => data.PASSWORD_FIELD === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  })
+  .refine((data) => data.acceptTerms === true, {
+    message: "Must accept terms",
+    path: ["acceptTerms"],
+  })
+```
+
+## Type Export Pattern
+
+```typescript
+// Export TypeScript types from schemas
+export type {Entity} = z.infer<typeof {entity}Schema>
+export type {Entity}Create = z.infer<typeof {entity}CreateSchema>
+export type {Entity}Update = z.infer<typeof {entity}UpdateSchema>
+export type {Entity}PartialUpdate = z.infer<typeof {entity}PartialUpdateSchema>
+export type {Entity}Query = z.infer<typeof {entity}QuerySchema>
+export type {Entity}ListResponse = z.infer<typeof {entity}ListResponseSchema>
+export type {Entity}Response = z.infer<typeof {entity}ResponseSchema>
+export type {Entity}DeleteResponse = z.infer<typeof {entity}DeleteResponseSchema>
+export type {Entity}Params = z.infer<typeof {entity}ParamsSchema>
+export type {Entity}Form = z.infer<typeof {entity}FormSchema>
+```
+
+## Field Type Mapping Guide
+
+### JSON to Zod Type Mapping
+
+| JSON Value            | Zod Schema              | Notes                      |
+| --------------------- | ----------------------- | -------------------------- |
+| `"string"`            | `z.string()`            | Basic string validation    |
+| `"email@example.com"` | `z.email()`             | Email format validation    |
+| `123`                 | `z.number()`            | Number validation          |
+| `true/false`          | `z.boolean()`           | Boolean validation         |
+| `"Y"/"N"`             | `z.enum(['Y', 'N'])`    | Enum for limited values    |
+| `null`                | `z.string().nullable()` | Nullable field             |
+| `undefined`           | `z.string().optional()` | Optional field             |
+| `"2024-01-01"`        | `z.string().datetime()` | ISO date string            |
+| `"ObjectId"`          | `z.string().min(1)`     | MongoDB ObjectId as string |
+
+### Common Validation Patterns
+
+```typescript
+// String validations
+z.string().min(1, 'Required')
+z.string().max(100, 'Too long')
+z.string().regex(/^[A-Z]+$/, 'Must be uppercase')
+
+// Number validations
+z.number().int('Must be integer')
+z.number().positive('Must be positive')
+z.number().min(0).max(100)
+
+// Coercion for form data
+z.coerce.number() // Converts string to number
+z.coerce.boolean() // Converts string to boolean
+
+// Array validations
+z.array(z.string()).min(1, 'At least one item required')
+
+// Object validations
+z.record(z.string()) // Dynamic object with string values
+```
+
+## File Naming Convention
+
+- **Location**: `src/lib/schemas/`
+- **Naming**: `{entity-name}-schema.ts` (kebab-case)
+- **Examples**:
+  - `user-schema.ts`
+  - `product-schema.ts`
+  - `order-item-schema.ts`
+
+## Implementation Checklist
+
+### Schema Creation
+
+- [ ] Analyze JSON structure and identify all fields
+- [ ] Determine required vs optional fields
+- [ ] Map JSON types to appropriate Zod validators
+- [ ] Create base schema with all field validations
+- [ ] Extend base schema for CRUD operations
+- [ ] Add query schema with pagination/filtering
+- [ ] Create response schemas for API endpoints
+- [ ] Add form validation schemas if needed
+- [ ] Export all TypeScript types
+
+### Validation Rules
+
+- [ ] Add appropriate string length limits
+- [ ] Use email validation for email fields
+- [ ] Set enum constraints for limited value fields
+- [ ] Add custom validation messages
+- [ ] Handle optional/nullable fields correctly
+- [ ] Set sensible defaults where appropriate
+
+### Security Considerations
+
+- [ ] Exclude sensitive fields from query schemas
+- [ ] Don't expose password fields in responses
+- [ ] Validate ID formats appropriately
+- [ ] Set reasonable limits on array lengths
+- [ ] Sanitize string inputs
+
+## Usage Examples
+
+```typescript
+// Import from schema file
+import {
+  userCreateSchema,
+  userUpdateSchema,
+  type User,
+  type UserCreate,
+} from '@/lib/schemas/user-schema'
+
+// Validate API input
+const createUser = (data: unknown) => {
+  const validatedData = userCreateSchema.parse(data)
+  // validatedData is now type-safe UserCreate
+  return saveUser(validatedData)
+}
+
+// Form validation
+const handleSubmit = (formData: FormData) => {
+  try {
+    const user = userFormSchema.parse(Object.fromEntries(formData))
+    // Form data is validated and type-safe
+  } catch (error) {
+    // Handle validation errors
+    if (error instanceof z.ZodError) {
+      console.log(error.errors)
+    }
+  }
+}
+```
+
+## Best Practices
+
+### Schema Design
+
+- Keep base schema focused on data validation only
+- Use meaningful error messages for better UX
+- Leverage Zod's built-in validators (email, url, uuid, etc.)
+- Set reasonable constraints (string lengths, number ranges)
+
+### Performance
+
+- Use `.strict()` to prevent unknown properties
+- Consider `.passthrough()` for flexible APIs
+- Use `.transform()` for data normalization
+- Cache compiled schemas for repeated use
+
+### Maintainability
+
+- Document complex validation logic
+- Use consistent naming conventions
+- Group related schemas in same file
+- Export types alongside schemas
+
+## Anti-Patterns to Avoid
+
+- ❌ Duplicating field definitions across schemas
+- ❌ Not using base schema extension patterns
+- ❌ Missing validation error messages
+- ❌ Exposing sensitive fields in query schemas
+- ❌ Not setting appropriate field constraints
+- ❌ Using `z.any()` instead of proper typing
+- ❌ Creating separate files for each schema variant
+- ❌ Not exporting TypeScript types
+- ❌ Hardcoding enum values without validation
+- ❌ Missing form validation refinements

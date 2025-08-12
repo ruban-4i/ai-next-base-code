@@ -1,0 +1,515 @@
+---
+description: Server CRUD Pattern Rules - Separation of queries (functions) and mutations (actions)
+globs: 'src/server/**/*.ts'
+alwaysApply: false
+---
+
+# Server CRUD Pattern Rules
+
+Guidelines for implementing clean, type-safe CRUD operations with proper separation of concerns in Next.js server-side code.
+
+## Core Principles
+
+### 1. Separation of Concerns
+
+- **Functions** (`src/server/functions/`) - Read operations for ISR/RSC
+- **Actions** (`src/server/actions/`) - Write operations with mutations
+- **Clear responsibility boundaries** - No mixing of read/write concerns
+
+### 2. Type Safety First
+
+- All inputs validated with Zod schemas
+- All outputs validated with response schemas
+- Complete TypeScript type coverage
+- Proper error handling with typed results
+
+### 3. Minimalist Approach
+
+- Only essential CRUD operations
+- No unnecessary helper functions
+- No redirect logic in server actions
+- Clean, focused API surface
+
+## File Structure Pattern
+
+```
+src/server/
+├── functions/
+│   └── {entity}-functions.ts    # Query operations
+└── actions/
+    └── {entity}-actions.ts      # Mutation operations
+```
+
+## Functions Pattern (Query Operations)
+
+### File Template: `src/server/functions/{entity}-functions.ts`
+
+```typescript
+import { {entityApi} } from '@/api/{entity-api}'
+import { {ENTITY}_PATHS, buildQueryString } from '@/lib/api-paths'
+import {
+  {entity}ListResponseSchema,
+  {entity}ResponseSchema,
+  type {Entity}Query,
+  type {Entity}ListResponse,
+  type {Entity}Response,
+} from '@/lib/schemas/{entity}-schema'
+
+/**
+ * Get paginated list of {entities} with filtering and sorting
+ * Server function for data fetching in RSC and ISR
+ */
+export async function get{Entity}sList(query: {Entity}Query): Promise<{Entity}ListResponse> {
+  try {
+    const queryString = buildQueryString({
+      page: query.page,
+      limit: query.limit,
+      sortBy: query.sortBy,
+      sortOrder: query.sortOrder,
+      search: query.search,
+      // Add specific entity fields
+    })
+
+    const url = `${{{ENTITY}_PATHS.LIST}}${queryString}`
+    const response = await {entityApi}.get(url)
+
+    // Validate response structure
+    const validatedResponse = {entity}ListResponseSchema.parse(response.data)
+
+    return validatedResponse
+  } catch (error) {
+    console.error('Failed to fetch {entities} list:', error)
+
+    // Return empty result on error
+    return {
+      data: [],
+      currentPage: query.page || 1,
+      totalPages: 0,
+      totalcount: 0,
+    }
+  }
+}
+
+/**
+ * Get single {entity} by ID
+ * Server function for individual {entity} data fetching
+ */
+export async function get{Entity}ById({entityId}: string): Promise<{Entity}Response | null> {
+  try {
+    if (!{entityId} || {entityId}.trim() === '') {
+      throw new Error('{Entity} ID is required')
+    }
+
+    const url = {ENTITY}_PATHS.GET_BY_ID({entityId})
+    const response = await {entityApi}.get(url)
+
+    // Validate response structure
+    const validatedResponse = {entity}ResponseSchema.parse(response.data)
+
+    return validatedResponse
+  } catch (error) {
+    console.error(`Failed to fetch {entity} ${{{entityId}}}:`, error)
+    return null
+  }
+}
+```
+
+### Functions Implementation Rules
+
+#### Required Functions (Minimum)
+
+- **`get{Entity}sList(query)`** - Paginated list with filtering
+- **`get{Entity}ById(id)`** - Single entity retrieval
+
+#### Function Characteristics
+
+- **No `'use server'` directive** - Functions are for read operations in ISR/RSC
+- Return typed data or null for errors
+- Include comprehensive error handling
+- Log errors for debugging
+- Validate all API responses with Zod schemas
+
+#### Naming Conventions
+
+- File: `{entity}-functions.ts` (kebab-case)
+- Functions: `get{Entity}sList`, `get{Entity}ById` (camelCase)
+- Parameters: Use entity-specific ID names
+
+## Actions Pattern (Mutation Operations)
+
+### File Template: `src/server/actions/{entity}-actions.ts`
+
+```typescript
+'use server'
+
+import { revalidatePath } from 'next/cache'
+import { {entityApi} } from '@/api/{entity-api}'
+import { {ENTITY}_PATHS } from '@/lib/api-paths'
+import {
+  {entity}CreateSchema,
+  {entity}UpdateSchema,
+  {entity}ResponseSchema,
+  {entity}DeleteResponseSchema,
+  type {Entity}Create,
+  type {Entity}Update,
+  type {Entity}Response,
+  type {Entity}DeleteResponse,
+} from '@/lib/schemas/{entity}-schema'
+
+/**
+ * Server Action Result Type
+ */
+type ActionResult<T = unknown> = {
+  success: boolean
+  data?: T
+  error?: string
+  fieldErrors?: Record<string, string[]>
+}
+
+/**
+ * Create a new {entity}
+ * Server action for {entity} creation with validation
+ */
+export async function create{Entity}({entityData}: {Entity}Create): Promise<ActionResult<{Entity}Response>> {
+  try {
+    // Validate input data
+    const validatedData = {entity}CreateSchema.parse({entityData})
+
+    // Make API call
+    const response = await {entityApi}.post({ENTITY}_PATHS.CREATE, validatedData)
+
+    // Validate response
+    const {entityResponse} = {entity}ResponseSchema.parse(response.data)
+
+    // Revalidate related pages
+    revalidatePath('/{entities}')
+
+    return {
+      success: true,
+      data: {entityResponse},
+    }
+  } catch (error) {
+    console.error('Failed to create {entity}:', error)
+
+    if (error instanceof Error) {
+      // Handle Zod validation errors
+      if (error.name === 'ZodError') {
+        const zodError = error as any
+        return {
+          success: false,
+          error: 'Validation failed',
+          fieldErrors: zodError.flatten().fieldErrors,
+        }
+      }
+
+      // Handle API errors
+      if ((error as any).response?.data?.message) {
+        return {
+          success: false,
+          error: (error as any).response.data.message,
+        }
+      }
+    }
+
+    return {
+      success: false,
+      error: 'Failed to create {entity}. Please try again.',
+    }
+  }
+}
+
+/**
+ * Update an existing {entity}
+ * Server action for {entity} updates with validation
+ */
+export async function update{Entity}({entityId}: string, {entityData}: Partial<{Entity}Update>): Promise<ActionResult<{Entity}Response>> {
+  try {
+    if (!{entityId} || {entityId}.trim() === '') {
+      return {
+        success: false,
+        error: '{Entity} ID is required',
+      }
+    }
+
+    // Prepare update data with ID
+    const updateData = {
+      {ENTITY_ID}: {entityId},
+      ...{entityData},
+    }
+
+    // Validate input data
+    const validatedData = {entity}UpdateSchema.parse(updateData)
+
+    // Make API call
+    const response = await {entityApi}.put({ENTITY}_PATHS.UPDATE({entityId}), validatedData)
+
+    // Validate response
+    const {entityResponse} = {entity}ResponseSchema.parse(response.data)
+
+    // Revalidate related pages
+    revalidatePath('/{entities}')
+    revalidatePath(`/{entities}/${{{entityId}}}`)
+
+    return {
+      success: true,
+      data: {entityResponse},
+    }
+  } catch (error) {
+    console.error(`Failed to update {entity} ${{{entityId}}}:`, error)
+
+    // Handle errors (same pattern as create)
+    return {
+      success: false,
+      error: 'Failed to update {entity}. Please try again.',
+    }
+  }
+}
+
+/**
+ * Delete a {entity}
+ * Server action for {entity} deletion
+ */
+export async function delete{Entity}({entityId}: string): Promise<ActionResult<{Entity}DeleteResponse>> {
+  try {
+    if (!{entityId} || {entityId}.trim() === '') {
+      return {
+        success: false,
+        error: '{Entity} ID is required',
+      }
+    }
+
+    // Make API call
+    const response = await {entityApi}.delete({ENTITY}_PATHS.DELETE({entityId}))
+
+    // Validate response
+    const deleteResponse = {entity}DeleteResponseSchema.parse(response.data)
+
+    // Revalidate related pages
+    revalidatePath('/{entities}')
+
+    return {
+      success: true,
+      data: deleteResponse,
+    }
+  } catch (error) {
+    console.error(`Failed to delete {entity} ${{{entityId}}}:`, error)
+
+    if (error instanceof Error && (error as any).response?.data?.message) {
+      return {
+        success: false,
+        error: (error as any).response.data.message,
+      }
+    }
+
+    return {
+      success: false,
+      error: 'Failed to delete {entity}. Please try again.',
+    }
+  }
+}
+```
+
+### Actions Implementation Rules
+
+#### Required Actions (Minimum)
+
+- **`create{Entity}(data)`** - Create new entity
+- **`update{Entity}(id, data)`** - Update existing entity
+- **`delete{Entity}(id)`** - Delete entity
+
+#### Action Characteristics
+
+- Always use `'use server'` directive
+- Return `ActionResult<T>` with success/error states
+- Include field-level validation errors
+- Call `revalidatePath()` after mutations
+- No redirect logic - let components handle navigation
+
+#### Error Handling Pattern
+
+```typescript
+// Standard error handling in all actions
+if (error instanceof Error) {
+  // Handle Zod validation errors
+  if (error.name === 'ZodError') {
+    const zodError = error as any
+    return {
+      success: false,
+      error: 'Validation failed',
+      fieldErrors: zodError.flatten().fieldErrors,
+    }
+  }
+
+  // Handle API errors
+  if ((error as any).response?.data?.message) {
+    return {
+      success: false,
+      error: (error as any).response.data.message,
+    }
+  }
+}
+
+return {
+  success: false,
+  error: 'Operation failed. Please try again.',
+}
+```
+
+## Integration Requirements
+
+### API Paths Integration
+
+```typescript
+// Must import from centralized paths
+import { {ENTITY}_PATHS } from '@/lib/api-paths'
+
+// Use path builders for dynamic URLs
+const url = {ENTITY}_PATHS.GET_BY_ID({entityId})
+```
+
+### Schema Integration
+
+```typescript
+// Import all required schemas and types
+import {
+  {entity}CreateSchema,
+  {entity}UpdateSchema,
+  {entity}ResponseSchema,
+  type {Entity}Create,
+  type {Entity}Update,
+} from '@/lib/schemas/{entity}-schema'
+```
+
+### Axios Instance Integration
+
+```typescript
+// Import entity-specific axios instance
+import { {entityApi} } from '@/api/{entity-api}'
+
+// Use for all API calls
+const response = await {entityApi}.get(url)
+```
+
+## Implementation Checklist
+
+### Functions Setup
+
+- [ ] Create `src/server/functions/{entity}-functions.ts`
+- [ ] **Do NOT add `'use server'` directive** - Functions are for ISR/RSC reads
+- [ ] Import axios instance and schemas
+- [ ] Implement `get{Entity}sList(query)` function
+- [ ] Implement `get{Entity}ById(id)` function
+- [ ] Add comprehensive error handling
+- [ ] Validate all API responses
+- [ ] Add TypeScript types for all parameters/returns
+
+### Actions Setup
+
+- [ ] Create `src/server/actions/{entity}-actions.ts`
+- [ ] Add `'use server'` directive
+- [ ] Import required dependencies
+- [ ] Define `ActionResult<T>` type
+- [ ] Implement `create{Entity}(data)` action
+- [ ] Implement `update{Entity}(id, data)` action
+- [ ] Implement `delete{Entity}(id)` action
+- [ ] Add revalidation calls
+- [ ] Implement standard error handling pattern
+
+### Integration Verification
+
+- [ ] All imports use centralized paths/schemas
+- [ ] Complete type safety throughout
+- [ ] Error handling follows standard pattern
+- [ ] No redirect logic in actions
+- [ ] Proper separation of read/write operations
+
+## Usage Examples
+
+### In Server Components (RSC)
+
+```typescript
+import { getUsersList, getUserById } from '@/server/functions/user-functions'
+
+// No 'use server' needed - functions work directly in RSC
+export default async function UsersPage() {
+  const users = await getUsersList({ page: 1, limit: 10 })
+
+  return (
+    <div>
+      {users.data.map(user => (
+        <UserCard
+          key={user.USER_ID}
+          user={user}
+        />
+      ))}
+    </div>
+  )
+}
+```
+
+### In Client Components with Actions
+
+```typescript
+'use client'
+
+import {
+  createUser,
+  updateUser,
+  deleteUser,
+} from '@/server/actions/user-actions'
+
+export default function UserForm() {
+  const handleSubmit = async (formData: FormData) => {
+    const userData = {
+      USER_NAME: formData.get('email') as string,
+      NAME: formData.get('name') as string,
+      // ... other fields
+    }
+
+    const result = await createUser(userData)
+
+    if (result.success) {
+      // Handle success
+    } else {
+      // Handle error
+      console.error(result.error, result.fieldErrors)
+    }
+  }
+
+  return <form onSubmit={handleSubmit}>...</form>
+}
+```
+
+## Best Practices
+
+### Performance
+
+- Use ISR/RSC for read operations when possible
+- Implement proper caching strategies
+- Validate responses to catch API changes early
+
+### Security
+
+- Always validate inputs with Zod schemas
+- Don't expose sensitive data in error messages
+- Use server-side validation for all mutations
+
+### Maintainability
+
+- Follow consistent naming conventions
+- Keep functions/actions focused and simple
+- Use comprehensive error handling
+- Document complex business logic
+
+## Anti-Patterns to Avoid
+
+- ❌ Mixing read/write operations in same file
+- ❌ Adding redirect logic to server actions
+- ❌ Creating unnecessary helper functions
+- ❌ Skipping input/output validation
+- ❌ Not handling errors properly
+- ❌ Using client-side axios instances in server code
+- ❌ Hardcoding API paths instead of using constants
+- ❌ Not revalidating cache after mutations
+- ❌ Missing TypeScript types
+- ❌ Inconsistent naming conventions
