@@ -19,6 +19,7 @@ import { useBoolean } from '@/hooks/use-boolean';
 import { useSelectedRow } from '@/hooks/use-selected-row';
 import type { Topics, TopicsListResponse } from '@/lib/schemas/topics-schema';
 import { useTopicsColumn } from '@/pages/topics/hooks/use-topics-column';
+import { paths } from '@/route/paths';
 import { deleteTopic } from '@/server/actions/topics-actions';
 
 interface TopicsListViewProps {
@@ -50,10 +51,10 @@ export function TopicsListView({ initialData }: TopicsListViewProps) {
   // Get table columns with action handlers
   const columns = useTopicsColumn({
     onView: (topic) => {
-      router.push(`/topics/${topic.TOPIC_ID}`);
+      router.push(paths.topics.details(topic.TOPIC_ID.toString()));
     },
     onEdit: (topic) => {
-      router.push(`/topics/${topic.TOPIC_ID}/edit`);
+      router.push(paths.topics.edit(topic.TOPIC_ID.toString()));
     },
     onDelete: (topic) => {
       selected.setRow(topic);
@@ -113,7 +114,7 @@ export function TopicsListView({ initialData }: TopicsListViewProps) {
           </p>
         </div>
         <Button asChild>
-          <Link href="/topics/new">
+          <Link href={paths.topics.new}>
             <Plus className="mr-2 h-4 w-4" />
             Add Topic
           </Link>

@@ -13,6 +13,7 @@ import {
   topicsResponseSchema,
   topicsUpdateSchema,
 } from '@/lib/schemas/topics-schema';
+import { paths } from '@/route/paths';
 
 /**
  * Server Action Result Type
@@ -45,7 +46,7 @@ export async function createTopic(
     const topicResponse = topicsResponseSchema.parse(response.data);
 
     // Revalidate related pages
-    revalidatePath('/topics');
+    revalidatePath(paths.topics.root);
 
     return {
       success: true,
@@ -116,8 +117,8 @@ export async function updateTopic(
     const topicResponse = topicsResponseSchema.parse(response.data);
 
     // Revalidate related pages
-    revalidatePath('/topics');
-    revalidatePath(`/topics/${topicId}`);
+    revalidatePath(paths.topics.root);
+    revalidatePath(paths.topics.details(topicId));
 
     return {
       success: true,
@@ -175,7 +176,7 @@ export async function deleteTopic(
     const deleteResponse = topicsDeleteResponseSchema.parse(response.data);
 
     // Revalidate related pages
-    revalidatePath('/topics');
+    revalidatePath(paths.topics.root);
 
     return {
       success: true,

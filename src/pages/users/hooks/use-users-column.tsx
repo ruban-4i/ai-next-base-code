@@ -24,6 +24,7 @@ import {
 import type { UseBooleanReturn } from '@/hooks/use-boolean';
 import type { UseSelectedRowReturn } from '@/hooks/use-selected-row';
 import type { User } from '@/lib/schemas/user-schema';
+import { paths } from '@/route/paths';
 
 interface UseUsersColumnsProps {
   selected: UseSelectedRowReturn<User>;
@@ -225,7 +226,7 @@ export function useUsersColumns({
                 <DropdownMenuItem asChild>
                   <Link
                     className="cursor-pointer"
-                    href={`/users/${user.USER_ID}`}
+                    href={paths.users.details(user.USER_ID)}
                   >
                     <Eye className="mr-2 h-4 w-4" />
                     View Details
@@ -234,7 +235,7 @@ export function useUsersColumns({
                 <DropdownMenuItem asChild>
                   <Link
                     className="cursor-pointer"
-                    href={`/users/${user.USER_ID}/edit`}
+                    href={paths.users.edit(user.USER_ID)}
                   >
                     <Edit className="mr-2 h-4 w-4" />
                     Edit User

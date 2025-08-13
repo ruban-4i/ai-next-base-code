@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import type { Topics } from '@/lib/schemas/topics-schema';
+import { paths } from '@/route/paths';
 
 interface TopicsDetailsViewProps {
   topic: Topics;
@@ -45,7 +46,7 @@ export function TopicsDetailsView({ topic }: TopicsDetailsViewProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Button asChild size="sm" variant="ghost">
-            <Link href="/topics">
+            <Link href={paths.topics.root}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Topics
             </Link>
@@ -60,7 +61,7 @@ export function TopicsDetailsView({ topic }: TopicsDetailsViewProps) {
           </div>
         </div>
         <Button asChild>
-          <Link href={`/topics/${topic.TOPIC_ID}/edit`}>
+          <Link href={paths.topics.edit(topic.TOPIC_ID.toString())}>
             <Edit className="mr-2 h-4 w-4" />
             Edit Topic
           </Link>
@@ -202,13 +203,13 @@ export function TopicsDetailsView({ topic }: TopicsDetailsViewProps) {
             </CardHeader>
             <CardContent className="space-y-2">
               <Button asChild className="w-full" size="sm" variant="outline">
-                <Link href={`/topics/${topic.TOPIC_ID}/edit`}>
+                <Link href={paths.topics.edit(topic.TOPIC_ID.toString())}>
                   <Edit className="mr-2 h-4 w-4" />
                   Edit Topic
                 </Link>
               </Button>
               <Button asChild className="w-full" size="sm" variant="outline">
-                <Link href="/topics">
+                <Link href={paths.topics.root}>
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back to List
                 </Link>

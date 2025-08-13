@@ -18,6 +18,7 @@ import { useBoolean } from '@/hooks/use-boolean';
 import { useSelectedRow } from '@/hooks/use-selected-row';
 import type { User, UserListResponse } from '@/lib/schemas/user-schema';
 import { useUsersColumns } from '@/pages/users/hooks/use-users-column';
+import { paths } from '@/route/paths';
 import { deleteUser } from '@/server/actions/user-actions';
 
 interface PaginationState {
@@ -103,7 +104,7 @@ export function UsersListView({
           </p>
         </div>
         <Button asChild>
-          <Link href="/users/new">
+          <Link href={paths.users.new}>
             <Plus className="mr-2 h-4 w-4" />
             Add User
           </Link>

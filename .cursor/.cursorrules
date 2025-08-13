@@ -38,8 +38,13 @@ Quick index of rule files under `./rules/`.
   - Globs: `src/pages/**/views/*.tsx`, `src/pages/**/hooks/*.tsx`, `src/server/actions/*.ts`, `src/components/common/*.tsx`; Always apply: `false`
 
 - **Form Mutation Pattern**: Create and update forms with React Hook Form, Zod validation, and unified component architecture
+
   - File: [rules/form-mutation-pattern.mdc](rules/form-mutation-pattern.mdc)
   - Globs: `src/pages/**/views/*-create-edit-view.tsx`, `src/app/**/new/page.tsx`, `src/app/**/[*]/edit/page.tsx`, `src/server/actions/*.ts`; Always apply: `false`
+
+- **Centralized Navigation Paths**: Use defined path constants from `src/route/paths.ts` for all navigation instead of hardcoded strings
+  - File: [rules/navigation-paths.mdc](rules/navigation-paths.mdc)
+  - Globs: `src/**/*.{ts,tsx}`; Always apply: `true`
 
 Usage:
 

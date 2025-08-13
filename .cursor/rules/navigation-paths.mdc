@@ -1,0 +1,188 @@
+# Centralized Navigation Paths
+
+## Overview
+
+All navigation in the application must use centralized path constants from `src/route/paths.ts` instead of hardcoded strings. This ensures consistency, type safety, and maintainability.
+
+## Core Principles
+
+1. **Never use hardcoded paths** - Always import and use path constants
+2. **Consistent pattern** - All navigation follows the same standardized approach
+3. **Type safety** - TypeScript catches invalid path usage at compile time
+4. **Single source of truth** - All paths are defined in one central location
+
+## Path Structure
+
+The paths are organized by feature with consistent naming:
+
+```typescript
+export const paths = {
+  users: {
+    root: '/users',
+    new: '/users/new',
+    edit: (id: string) => `/users/${id}/edit`,
+    details: (id: string) => `/users/${id}`,
+  },
+  topics: {
+    root: '/topics',
+    new: '/topics/new',
+    edit: (id: string) => `/topics/${id}/edit`,
+    details: (id: string) => `/topics/${id}`,
+  },
+} as const
+```
+
+## Required Import
+
+Always import the paths object when using navigation:
+
+```typescript
+import { paths } from '@/route/paths'
+```
+
+## Usage Patterns
+
+### ✅ Correct Usage
+
+#### Link Components
+
+```typescript
+// Static paths
+<Link href={paths.users.root}>Users</Link>
+<Link href={paths.users.new}>Add User</Link>
+
+// Dynamic paths with parameters
+<Link href={paths.users.details(userId)}>View User</Link>
+<Link href={paths.users.edit(userId)}>Edit User</Link>
+```
+
+#### Router Navigation
+
+```typescript
+// Static navigation
+router.push(paths.users.root)
+router.push(paths.topics.new)
+
+// Dynamic navigation
+router.push(paths.users.details(userId))
+router.push(paths.topics.edit(topicId))
+```
+
+#### Server Actions (revalidatePath)
+
+```typescript
+// Revalidate specific pages
+revalidatePath(paths.users.root)
+revalidatePath(paths.users.details(userId))
+```
+
+### ❌ Incorrect Usage
+
+```typescript
+// Never use hardcoded strings
+<Link href="/users">Users</Link>
+<Link href="/users/new">Add User</Link>
+<Link href={`/users/${userId}`}>View User</Link>
+
+// Never use hardcoded router navigation
+router.push('/users');
+router.push(`/users/${userId}/edit`);
+
+// Never use hardcoded revalidation paths
+revalidatePath('/users');
+revalidatePath(`/users/${userId}`);
+```
+
+## Adding New Routes
+
+When adding new features, extend the paths object following the established pattern:
+
+```typescript
+export const paths = {
+  // ... existing paths
+  newFeature: {
+    root: '/new-feature',
+    new: '/new-feature/new',
+    edit: (id: string) => `/new-feature/${id}/edit`,
+    details: (id: string) => `/new-feature/${id}`,
+    // Add feature-specific paths as needed
+    reports: '/new-feature/reports',
+    settings: (id: string) => `/new-feature/${id}/settings`,
+  },
+} as const
+```
+
+## Navigation Types
+
+This rule applies to ALL forms of navigation:
+
+1. **Link Components**: `<Link href={...}>`
+2. **Router Methods**: `router.push()`, `router.replace()`, `router.back()`
+3. **Navigation Hooks**: Any custom navigation logic
+4. **Server Actions**: `revalidatePath()`, `redirect()`
+5. **Form Actions**: Action attributes and redirects
+6. **Conditional Navigation**: Dynamic path generation
+
+## Benefits
+
+- **Maintainability**: Change URLs in one place
+- **Type Safety**: Compile-time path validation
+- **Consistency**: Standardized navigation patterns
+- **Refactoring**: Easy to rename or restructure routes
+- **Developer Experience**: IntelliSense and auto-completion
+- **Error Prevention**: No typos in hardcoded strings
+
+## Enforcement
+
+- This rule applies to ALL TypeScript/TSX files in the `src/` directory
+- Always prefer centralized paths over hardcoded strings
+- Import the paths object at the top of any file using navigation
+- Use the appropriate path method (static vs dynamic) based on your needs
+
+## Examples by File Type
+
+### View Components
+
+```typescript
+import { paths } from '@/route/paths'
+
+export function UserListView() {
+  return (
+    <Button asChild>
+      <Link href={paths.users.new}>Add User</Link>
+    </Button>
+  )
+}
+```
+
+### Hooks
+
+```typescript
+import { paths } from '@/route/paths'
+
+export function useUsersColumns() {
+  const router = useRouter()
+
+  return {
+    onView: user => router.push(paths.users.details(user.id)),
+    onEdit: user => router.push(paths.users.edit(user.id)),
+  }
+}
+```
+
+### Server Actions
+
+```typescript
+import { paths } from '@/route/paths'
+
+export async function updateUser(userId: string, data: UserUpdate) {
+  // ... update logic
+
+  revalidatePath(paths.users.root)
+  revalidatePath(paths.users.details(userId))
+
+  return { success: true }
+}
+```
+
+This rule ensures consistent, maintainable navigation throughout the application while providing type safety and developer experience benefits.

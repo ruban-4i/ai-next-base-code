@@ -1,84 +1,91 @@
-'use client'
+'use client';
 
-import Link from 'next/link'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { 
-  ArrowLeft, 
-  Edit, 
-  Mail, 
-  User, 
-  Shield, 
-  Building2, 
-  GraduationCap,
+import {
+  ArrowLeft,
+  Building2,
   Calendar,
   CheckCircle,
+  Edit,
+  GraduationCap,
+  Key,
+  Mail,
+  Shield,
+  User,
   XCircle,
-  Key
-} from 'lucide-react'
-import type { UserResponse } from '@/lib/schemas/user-schema'
+} from 'lucide-react';
+import Link from 'next/link';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import type { UserResponse } from '@/lib/schemas/user-schema';
+import { paths } from '@/route/paths';
 
 interface UserDetailsViewProps {
-  userData: UserResponse
-  userId: string
+  userData: UserResponse;
+  userId: string;
 }
 
 export function UserDetailsView({ userData, userId }: UserDetailsViewProps) {
-  const user = userData
+  const user = userData;
 
   // Get user initials for avatar
   const getUserInitials = (name: string) => {
     return name
       .split(' ')
-      .map(part => part[0])
+      .map((part) => part[0])
       .join('')
       .toUpperCase()
-      .slice(0, 2)
-  }
+      .slice(0, 2);
+  };
 
   // Get status badge variant
   const getStatusVariant = (active: string) => {
-    return active === 'Y' ? 'default' : 'secondary'
-  }
+    return active === 'Y' ? 'default' : 'secondary';
+  };
 
   // Get role badge variant
   const getRoleVariant = (role: string) => {
     switch (role.toLowerCase()) {
       case 'admin':
-        return 'destructive'
+        return 'destructive';
       case 'hr':
-        return 'default'
+        return 'default';
       case 'candidate':
-        return 'outline'
+        return 'outline';
       default:
-        return 'secondary'
+        return 'secondary';
     }
-  }
+  };
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto space-y-6 py-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/users">
+          <Button asChild size="sm" variant="ghost">
+            <Link href={paths.users.root}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Users
             </Link>
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">User Details</h1>
+            <h1 className="font-bold text-3xl tracking-tight">User Details</h1>
             <p className="text-muted-foreground">
               View and manage user information
             </p>
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" asChild>
-            <Link href={`/users/${userId}/edit`}>
+          <Button asChild variant="outline">
+            <Link href={paths.users.edit(userId)}>
               <Edit className="mr-2 h-4 w-4" />
               Edit User
             </Link>
@@ -90,7 +97,7 @@ export function UserDetailsView({ userData, userId }: UserDetailsViewProps) {
         {/* User Profile Card */}
         <Card className="md:col-span-1">
           <CardHeader className="text-center">
-            <div className="flex justify-center mb-4">
+            <div className="mb-4 flex justify-center">
               <Avatar className="h-24 w-24">
                 <AvatarFallback className="text-2xl">
                   {getUserInitials(user.NAME)}
@@ -101,7 +108,7 @@ export function UserDetailsView({ userData, userId }: UserDetailsViewProps) {
             <CardDescription className="text-base">
               {user.USER_NAME}
             </CardDescription>
-            <div className="flex justify-center space-x-2 mt-4">
+            <div className="mt-4 flex justify-center space-x-2">
               <Badge variant={getRoleVariant(user.LOOKUP_VALUES)}>
                 {user.LOOKUP_VALUES}
               </Badge>
@@ -123,34 +130,42 @@ export function UserDetailsView({ userData, userId }: UserDetailsViewProps) {
           <CardContent className="space-y-6">
             {/* Basic Information */}
             <div>
-              <h3 className="text-lg font-semibold mb-4 flex items-center">
+              <h3 className="mb-4 flex items-center font-semibold text-lg">
                 <User className="mr-2 h-5 w-5" />
                 Basic Information
               </h3>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <div className="text-sm font-medium text-muted-foreground">Full Name</div>
+                  <div className="font-medium text-muted-foreground text-sm">
+                    Full Name
+                  </div>
                   <div className="flex items-center space-x-2">
                     <User className="h-4 w-4 text-muted-foreground" />
                     <span>{user.NAME}</span>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <div className="text-sm font-medium text-muted-foreground">Email Address</div>
+                  <div className="font-medium text-muted-foreground text-sm">
+                    Email Address
+                  </div>
                   <div className="flex items-center space-x-2">
                     <Mail className="h-4 w-4 text-muted-foreground" />
                     <span>{user.USER_NAME}</span>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <div className="text-sm font-medium text-muted-foreground">User ID</div>
+                  <div className="font-medium text-muted-foreground text-sm">
+                    User ID
+                  </div>
                   <div className="flex items-center space-x-2">
                     <Key className="h-4 w-4 text-muted-foreground" />
                     <span className="font-mono text-sm">{user.USER_ID}</span>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <div className="text-sm font-medium text-muted-foreground">Account Status</div>
+                  <div className="font-medium text-muted-foreground text-sm">
+                    Account Status
+                  </div>
                   <div className="flex items-center space-x-2">
                     {user.ACTIVE === 'Y' ? (
                       <CheckCircle className="h-4 w-4 text-green-600" />
@@ -167,13 +182,15 @@ export function UserDetailsView({ userData, userId }: UserDetailsViewProps) {
 
             {/* Role and Permissions */}
             <div>
-              <h3 className="text-lg font-semibold mb-4 flex items-center">
+              <h3 className="mb-4 flex items-center font-semibold text-lg">
                 <Shield className="mr-2 h-5 w-5" />
                 Role & Permissions
               </h3>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <div className="text-sm font-medium text-muted-foreground">User Role</div>
+                  <div className="font-medium text-muted-foreground text-sm">
+                    User Role
+                  </div>
                   <div className="flex items-center space-x-2">
                     <Shield className="h-4 w-4 text-muted-foreground" />
                     <Badge variant={getRoleVariant(user.LOOKUP_VALUES)}>
@@ -182,7 +199,9 @@ export function UserDetailsView({ userData, userId }: UserDetailsViewProps) {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <div className="text-sm font-medium text-muted-foreground">Role ID</div>
+                  <div className="font-medium text-muted-foreground text-sm">
+                    Role ID
+                  </div>
                   <div className="flex items-center space-x-2">
                     <Key className="h-4 w-4 text-muted-foreground" />
                     <span className="font-mono text-sm">{user.USER_ROLE}</span>
@@ -196,14 +215,16 @@ export function UserDetailsView({ userData, userId }: UserDetailsViewProps) {
               <>
                 <Separator />
                 <div>
-                  <h3 className="text-lg font-semibold mb-4 flex items-center">
+                  <h3 className="mb-4 flex items-center font-semibold text-lg">
                     <Building2 className="mr-2 h-5 w-5" />
                     Organization Details
                   </h3>
                   <div className="grid gap-4 md:grid-cols-2">
                     {user.DEPARTMENT && (
                       <div className="space-y-2">
-                        <div className="text-sm font-medium text-muted-foreground">Department</div>
+                        <div className="font-medium text-muted-foreground text-sm">
+                          Department
+                        </div>
                         <div className="flex items-center space-x-2">
                           <Building2 className="h-4 w-4 text-muted-foreground" />
                           <span>{user.DEPARTMENT}</span>
@@ -212,7 +233,9 @@ export function UserDetailsView({ userData, userId }: UserDetailsViewProps) {
                     )}
                     {user.BATCH_NAME && (
                       <div className="space-y-2">
-                        <div className="text-sm font-medium text-muted-foreground">Batch</div>
+                        <div className="font-medium text-muted-foreground text-sm">
+                          Batch
+                        </div>
                         <div className="flex items-center space-x-2">
                           <GraduationCap className="h-4 w-4 text-muted-foreground" />
                           <span>{user.BATCH_NAME}</span>
@@ -238,19 +261,25 @@ export function UserDetailsView({ userData, userId }: UserDetailsViewProps) {
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
-              <div className="text-sm font-medium text-muted-foreground">User ID</div>
-              <div className="font-mono text-sm bg-muted p-2 rounded">
+              <div className="font-medium text-muted-foreground text-sm">
+                User ID
+              </div>
+              <div className="rounded bg-muted p-2 font-mono text-sm">
                 {user.USER_ID}
               </div>
             </div>
             <div className="space-y-2">
-              <div className="text-sm font-medium text-muted-foreground">Role ID</div>
-              <div className="font-mono text-sm bg-muted p-2 rounded">
+              <div className="font-medium text-muted-foreground text-sm">
+                Role ID
+              </div>
+              <div className="rounded bg-muted p-2 font-mono text-sm">
                 {user.USER_ROLE}
               </div>
             </div>
             <div className="space-y-2">
-              <div className="text-sm font-medium text-muted-foreground">Password Status</div>
+              <div className="font-medium text-muted-foreground text-sm">
+                Password Status
+              </div>
               <div className="flex items-center space-x-2 p-2">
                 <Key className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm">Encrypted</span>
@@ -261,16 +290,16 @@ export function UserDetailsView({ userData, userId }: UserDetailsViewProps) {
       </Card>
 
       {/* Action Buttons */}
-      <div className="flex items-center justify-between pt-6 border-t">
-        <Button variant="outline" asChild>
-          <Link href="/users">
+      <div className="flex items-center justify-between border-t pt-6">
+        <Button asChild variant="outline">
+          <Link href={paths.users.root}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Users List
           </Link>
         </Button>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" asChild>
-            <Link href={`/users/${userId}/edit`}>
+          <Button asChild variant="outline">
+            <Link href={paths.users.edit(userId)}>
               <Edit className="mr-2 h-4 w-4" />
               Edit User
             </Link>
@@ -278,5 +307,5 @@ export function UserDetailsView({ userData, userId }: UserDetailsViewProps) {
         </div>
       </div>
     </div>
-  )
+  );
 }

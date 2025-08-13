@@ -13,6 +13,7 @@ import {
   userResponseSchema,
   userUpdateSchema,
 } from '@/lib/schemas/user-schema';
+import { paths } from '@/route/paths';
 
 /**
  * Server Action Result Type
@@ -42,7 +43,7 @@ export async function createUser(
     // const userResponse = userResponseSchema.parse(response.data);
 
     // Revalidate users list page
-    revalidatePath('/users');
+    revalidatePath(paths.users.root);
 
     return {
       success: true,
@@ -122,8 +123,8 @@ export async function updateUser(
     const userResponse = userResponseSchema.parse(response.data);
 
     // Revalidate related pages
-    revalidatePath('/users');
-    revalidatePath(`/users/${userId}`);
+    revalidatePath(paths.users.root);
+    revalidatePath(paths.users.details(userId));
 
     return {
       success: true,
@@ -181,7 +182,7 @@ export async function deleteUser(
     // const deleteResponse = userDeleteResponseSchema.parse(response.data);
 
     // Revalidate users list page
-    revalidatePath('/users');
+    revalidatePath(paths.users.root);
 
     return {
       success: true,

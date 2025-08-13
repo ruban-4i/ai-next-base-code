@@ -39,6 +39,7 @@ import {
   type TopicsUpdate,
   topicsFormSchema,
 } from '@/lib/schemas/topics-schema';
+import { paths } from '@/route/paths';
 import { createTopic, updateTopic } from '@/server/actions/topics-actions';
 
 interface TopicsCreateEditViewProps {
@@ -93,7 +94,7 @@ export function TopicsCreateEditView({
 
     if (result.success) {
       toast.success('Topic updated successfully');
-      router.push(`/topics/${topicId}`);
+      router.push(paths.topics.details(topicId));
       router.refresh();
     } else if (result.fieldErrors) {
       handleFieldErrors(result.fieldErrors);
@@ -115,7 +116,7 @@ export function TopicsCreateEditView({
 
     if (result.success) {
       toast.success('Topic created successfully');
-      router.push('/topics');
+      router.push(paths.topics.root);
       router.refresh();
     } else if (result.fieldErrors) {
       handleFieldErrors(result.fieldErrors);
@@ -157,7 +158,13 @@ export function TopicsCreateEditView({
       {/* Header */}
       <div className="flex items-center space-x-4">
         <Button asChild size="sm" variant="ghost">
-          <Link href={isEdit && topicId ? `/topics/${topicId}` : '/topics'}>
+          <Link
+            href={
+              isEdit && topicId
+                ? paths.topics.details(topicId)
+                : paths.topics.root
+            }
+          >
             <ArrowLeft className="mr-2 h-4 w-4" />
             {isEdit ? 'Back to Topic' : 'Back to Topics'}
           </Link>
@@ -299,9 +306,9 @@ export function TopicsCreateEditView({
                 <Button
                   onClick={() => {
                     if (isEdit && topicId) {
-                      router.push(`/topics/${topicId}`);
+                      router.push(paths.topics.details(topicId));
                     } else {
-                      router.push('/topics');
+                      router.push(paths.topics.root);
                     }
                   }}
                   type="button"
