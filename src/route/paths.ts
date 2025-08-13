@@ -11,4 +11,10 @@ export const paths = {
     edit: (id: string) => `/topics/${id}/edit`,
     details: (id: string) => `/topics/${id}`,
   },
+  books: {
+    root: '/books',
+    new: '/books/new',
+    edit: (id: string) => `/books/${id}/edit`,
+    details: (id: string) => `/books/${id}`,
+  },
 } as const;

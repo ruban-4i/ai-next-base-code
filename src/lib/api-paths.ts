@@ -83,6 +83,30 @@ export const API_PATHS = {
     BATCH_DELETE: '/topics/batch-delete',
     BATCH_UPDATE: '/topics/batch-update',
   },
+
+  /**
+   * Book-related API endpoints
+   */
+  BOOKS: {
+    // List books with pagination and filtering
+    LIST: '/books',
+
+    // Get single book by ID
+    GET_BY_ID: (bookId: string) => `/books/${bookId}`,
+
+    // Create new book
+    CREATE: '/books',
+
+    // Update existing book
+    UPDATE: (bookId: string) => `/books/${bookId}`,
+
+    // Delete book
+    DELETE: (bookId: string) => `/books/${bookId}`,
+
+    // Batch operations
+    BATCH_DELETE: '/books/batch-delete',
+    BATCH_UPDATE: '/books/batch-update',
+  },
 } as const;
 
 /**
@@ -116,3 +140,4 @@ export const AUTH_PATHS = API_PATHS.AUTH;
 export const ROLE_PATHS = API_PATHS.ROLES;
 export const DEPARTMENT_PATHS = API_PATHS.DEPARTMENTS;
 export const TOPICS_PATHS = API_PATHS.TOPICS;
+export const BOOKS_PATHS = API_PATHS.BOOKS;
