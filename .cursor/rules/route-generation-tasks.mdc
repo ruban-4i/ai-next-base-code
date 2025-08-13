@@ -1,0 +1,248 @@
+# Route Generation Task Planning
+
+## Overview
+
+When creating new routes end-to-end, always generate a structured task file first for manual review and approval before implementation. This ensures proper planning, consistency, and allows for adjustments before code generation.
+
+## Process Flow
+
+1. **User Request**: User asks to create a new route (e.g., "Create a products management route")
+2. **Task File Generation**: AI generates a detailed task file in `.cursor/tasks/`
+3. **Manual Review**: User reviews and updates the task file as needed
+4. **Approval**: User says "go ahead" or similar confirmation
+5. **Implementation**: AI executes the tasks listed in the task file
+
+## Task File Structure
+
+### File Naming Convention
+
+```
+.cursor/tasks/{route-name}-{DD-MM-YY}.md
+```
+
+Example: `.cursor/tasks/products-13-08-25.md`
+
+### Required Sections
+
+#### 1. Route Overview
+
+- Route name and purpose
+- Main functionality description
+- User roles/permissions if applicable
+
+#### 2. Path Definitions
+
+- List all paths to be added to `src/route/paths.ts`
+- Follow existing naming conventions
+
+#### 3. Schema Definition
+
+- Data structure and types
+- Validation rules using Zod
+- API response/request schemas
+
+#### 4. Database/API Integration
+
+- API endpoints to be added to `src/lib/api-paths.ts`
+- Server functions and actions needed
+- CRUD operations required
+
+#### 5. Component Architecture
+
+- List view component
+- Details view component
+- Create/Edit form component
+- Any additional components
+
+#### 6. Navigation Integration
+
+- Where to add navigation links
+- Menu updates if needed
+- Breadcrumb considerations
+
+#### 7. File Structure
+
+- Complete list of files to be created
+- Folder organization
+- Import/export structure
+
+#### 8. Implementation Order
+
+- Step-by-step implementation sequence
+- Dependencies between components
+- Testing checkpoints
+
+## Task File Template
+
+````markdown
+# {Route Name} - Route Generation Task
+
+**Date**: {DD-MM-YY}  
+**Status**: Pending Review
+
+## 1. Route Overview
+
+- **Route Name**: {route-name}
+- **Purpose**: {description of functionality}
+- **Features**:
+  - [ ] List/Browse {items}
+  - [ ] View {item} details
+  - [ ] Create new {item}
+  - [ ] Edit existing {item}
+  - [ ] Delete {item}
+  - [ ] {Additional features}
+
+## 2. Path Definitions
+
+Add to `src/route/paths.ts`:
+
+```typescript
+{routeName}: {
+  root: '/{route-path}',
+  new: '/{route-path}/new',
+  edit: (id: string) => `/{route-path}/${id}/edit`,
+  details: (id: string) => `/{route-path}/${id}`,
+},
+```
+````
+
+## 3. Schema Definition
+
+Create `src/lib/schemas/{route-name}-schema.ts`:
+
+- [ ] Base {Item} type
+- [ ] {Item}Response type
+- [ ] {Item}Create type
+- [ ] {Item}Update type
+- [ ] {Item}ListResponse type
+- [ ] Form validation schemas
+- [ ] API response schemas
+
+## 4. Database/API Integration
+
+Add to `src/lib/api-paths.ts`:
+
+- [ ] {ROUTE_NAME}\_PATHS with CRUD endpoints
+- [ ] GET_ALL, GET_BY_ID, CREATE, UPDATE, DELETE paths
+
+Create server functions and actions:
+
+- [ ] `src/server/functions/{route-name}-functions.ts`
+- [ ] `src/server/actions/{route-name}-actions.ts`
+
+## 5. Component Architecture
+
+Create components:
+
+- [ ] `src/pages/{route-name}/views/{route-name}-list-view.tsx`
+- [ ] `src/pages/{route-name}/views/{route-name}-details-view.tsx`
+- [ ] `src/pages/{route-name}/views/{route-name}-create-edit-view.tsx`
+- [ ] `src/pages/{route-name}/hooks/use-{route-name}-column.tsx`
+
+## 6. Navigation Integration
+
+- [ ] Add navigation links to main menu/sidebar
+- [ ] Update breadcrumb components if needed
+- [ ] Add route to navigation configuration
+
+## 7. File Structure
+
+```
+src/
+├── lib/
+│   ├── api-paths.ts (update)
+│   └── schemas/
+│       └── {route-name}-schema.ts (new)
+├── pages/
+│   └── {route-name}/
+│       ├── hooks/
+│       │   └── use-{route-name}-column.tsx (new)
+│       └── views/
+│           ├── {route-name}-list-view.tsx (new)
+│           ├── {route-name}-details-view.tsx (new)
+│           └── {route-name}-create-edit-view.tsx (new)
+├── route/
+│   └── paths.ts (update)
+└── server/
+    ├── actions/
+    │   └── {route-name}-actions.ts (new)
+    └── functions/
+        └── {route-name}-functions.ts (new)
+```
+
+## 8. Implementation Order
+
+1. [ ] Update `src/route/paths.ts` with new paths
+2. [ ] Create schema definitions
+3. [ ] Update API paths configuration
+4. [ ] Create server functions (queries)
+5. [ ] Create server actions (mutations)
+6. [ ] Create list view component
+7. [ ] Create details view component
+8. [ ] Create create/edit form component
+9. [ ] Create column hooks for data table
+10. [ ] Add navigation integration
+11. [ ] Test all CRUD operations
+12. [ ] Verify path constants usage
+
+## Notes
+
+- Follow existing patterns from users/topics routes
+- Ensure all navigation uses path constants from `paths.ts`
+- Apply consistent styling and component patterns
+- Include proper error handling and loading states
+- Add proper TypeScript types throughout
+
+## Review Checklist
+
+- [ ] All required files identified
+- [ ] Implementation order makes sense
+- [ ] Follows existing project patterns
+- [ ] Navigation paths properly defined
+- [ ] Schema structure is appropriate
+- [ ] Component architecture is consistent
+
+---
+
+**Instructions**: Review this task file, make any necessary adjustments, then respond with "go ahead" to begin implementation.
+
+```
+
+## Usage Guidelines
+
+### When to Generate Task Files
+- Creating entirely new routes/features
+- Major refactoring involving multiple files
+- Complex implementations requiring planning
+- When user specifically requests task-based approach
+
+### Task File Location
+All task files must be created in `.cursor/tasks/` directory with the naming convention:
+`{route-name}-{DD-MM-YY}.md`
+
+### User Interaction Flow
+1. **AI**: "I'll create a task file for the {route-name} route. Let me generate the plan first."
+2. **AI**: Creates task file in `.cursor/tasks/`
+3. **AI**: "Please review the task file at `.cursor/tasks/{route-name}-{DD-MM-YY}.md` and let me know if you'd like any changes."
+4. **User**: Reviews and potentially updates the file
+5. **User**: Says "go ahead" or similar confirmation
+6. **AI**: Executes the implementation following the task file
+
+### Implementation Rules
+- Always follow the task file exactly as written
+- Check off completed items as you progress
+- If deviations are needed, explain why
+- Update the task file status upon completion
+- Reference the task file in commit messages
+
+## Benefits
+
+- **Structured Planning**: Clear roadmap before implementation
+- **Manual Review**: User can adjust scope and approach
+- **Consistency**: Follows established patterns and conventions
+- **Documentation**: Creates permanent record of implementation decisions
+- **Quality Control**: Reduces errors through upfront planning
+- **Flexibility**: Allows modifications before code generation
+
+This approach ensures thoughtful, consistent route creation while maintaining project standards and allowing for user input at the planning stage.
+```

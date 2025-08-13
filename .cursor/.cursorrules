@@ -43,8 +43,13 @@ Quick index of rule files under `./rules/`.
   - Globs: `src/pages/**/views/*-create-edit-view.tsx`, `src/app/**/new/page.tsx`, `src/app/**/[*]/edit/page.tsx`, `src/server/actions/*.ts`; Always apply: `false`
 
 - **Centralized Navigation Paths**: Use defined path constants from `src/route/paths.ts` for all navigation instead of hardcoded strings
+
   - File: [rules/navigation-paths.mdc](rules/navigation-paths.mdc)
   - Globs: `src/**/*.{ts,tsx}`; Always apply: `true`
+
+- **Route Generation Task Planning**: Generate structured task files for new route creation with manual review process
+  - File: [rules/route-generation-tasks.mdc](rules/route-generation-tasks.mdc)
+  - Globs: `**/*`; Always apply: `false`
 
 Usage:
 
