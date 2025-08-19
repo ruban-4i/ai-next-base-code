@@ -6,11 +6,115 @@ When creating new routes end-to-end, always generate a structured task file firs
 
 ## Process Flow
 
-1. **User Request**: User asks to create a new route (e.g., "Create a products management route")
-2. **Task File Generation**: AI generates a detailed task file in `.cursor/tasks/`
-3. **Manual Review**: User reviews and updates the task file as needed
-4. **Approval**: User says "go ahead" or similar confirmation
-5. **Implementation**: AI executes the tasks listed in the task file
+1. **User Request**: User provides URL and data shape to create a new route
+2. **Interactive Clarification**: AI asks follow-up questions to understand requirements
+3. **Task File Generation**: AI generates a detailed task file in `.cursor/tasks/` based on clarifications
+4. **Manual Review**: User reviews and updates the task file as needed
+5. **Approval**: User says "go ahead" or similar confirmation
+6. **Implementation**: AI executes the tasks listed in the task file
+
+## Interactive Clarification Process
+
+Before generating the task file, AI must ask specific clarification questions to understand the exact requirements. This ensures the generated task file matches the user's needs precisely.
+
+### Required Clarification Questions
+
+#### 1. Table Display Fields
+
+**Question Format:**
+
+```
+Based on the data shape you provided, here are all available fields:
+[List all fields from data shape]
+
+Which fields should be displayed in the table view? Please copy and paste the fields you want to show, or specify them clearly.
+```
+
+**Purpose**: Determine which fields to include in the list view table columns
+
+#### 2. Form Fields and Data Types
+
+**Question Format:**
+
+```
+For the create/edit form, please specify:
+
+Available fields and their data types:
+[Field name] - [Inferred type based on sample data]
+- If field has values like "Y"/"N" or "true"/"false" → Switch/Toggle component
+- If field is a date → Date picker component
+- If field has limited options → Select dropdown
+- If field is long text → Textarea component
+- Otherwise → Text input
+
+Which fields should be included in the form and what are their specific data types/components?
+```
+
+**Purpose**: Determine form structure and appropriate UI components
+
+#### 3. CRUD Operation Scope
+
+**Question Format:**
+
+```
+What CRUD operations do you need for this route?
+- [ ] Create (C) - Add new records
+- [ ] Read (R) - List and view records
+- [ ] Update (U) - Edit existing records
+- [ ] Delete (D) - Remove records
+
+Please specify: Complete CRUD, Read-only, or specific operations only?
+```
+
+**Purpose**: Determine which operations to implement
+
+#### 4. Additional Features
+
+**Question Format:**
+
+```
+Do you need any additional features?
+- [ ] Search/Filter functionality
+- [ ] Pagination (default: server-side pagination)
+- [ ] Sorting by specific fields
+- [ ] Bulk operations (bulk delete, bulk update)
+- [ ] Export functionality (CSV, PDF)
+- [ ] Import functionality
+- [ ] Status management (active/inactive)
+- [ ] Audit trail (created/updated timestamps)
+- [ ] Permission-based access control
+- [ ] Custom validation rules
+
+Please specify any additional features needed.
+```
+
+**Purpose**: Identify extra functionality requirements
+
+### Clarification Response Template
+
+AI should respond with this format:
+
+```markdown
+I'll help you create the {route-name} route! Before generating the implementation plan, I need to clarify a few details:
+
+## 1. Table Display Fields
+
+[Ask question about which fields to display in table]
+
+## 2. Form Fields and Components
+
+[Ask about form fields and their UI components]
+
+## 3. CRUD Operations Scope
+
+[Ask about which operations are needed]
+
+## 4. Additional Features
+
+[Ask about extra functionality]
+
+Once you provide these details, I'll generate a comprehensive task file for your review.
+```
 
 ## Task File Structure
 
@@ -210,6 +314,15 @@ src/
 
 ## Usage Guidelines
 
+### When to Trigger Interactive Clarification
+- User requests creating a new route with URL and data shape
+- User mentions "end-to-end route creation"
+- User provides API data structure or JSON sample
+- Request involves creating complete CRUD operations
+- User asks for table/form functionality with specific data
+
+**Always ask clarification questions BEFORE generating any task file when these conditions are met.**
+
 ### When to Generate Task Files
 - Creating entirely new routes/features
 - Major refactoring involving multiple files
@@ -221,12 +334,16 @@ All task files must be created in `.cursor/tasks/` directory with the naming con
 `{route-name}-{DD-MM-YY}.md`
 
 ### User Interaction Flow
-1. **AI**: "I'll create a task file for the {route-name} route. Let me generate the plan first."
-2. **AI**: Creates task file in `.cursor/tasks/`
-3. **AI**: "Please review the task file at `.cursor/tasks/{route-name}-{DD-MM-YY}.md` and let me know if you'd like any changes."
-4. **User**: Reviews and potentially updates the file
-5. **User**: Says "go ahead" or similar confirmation
-6. **AI**: Executes the implementation following the task file
+1. **User**: Provides URL and data shape for new route creation
+2. **AI**: "I'll help you create the {route-name} route! Before generating the implementation plan, I need to clarify a few details:"
+3. **AI**: Asks clarification questions about table fields, form components, CRUD scope, and additional features
+4. **User**: Provides answers to clarification questions
+5. **AI**: "Based on your requirements, I'll create a comprehensive task file."
+6. **AI**: Creates task file in `.cursor/tasks/` incorporating user's clarifications
+7. **AI**: "Please review the task file at `.cursor/tasks/{route-name}-{DD-MM-YY}.md` and let me know if you'd like any changes."
+8. **User**: Reviews and potentially updates the file manually or via prompts
+9. **User**: Says "go ahead" or similar confirmation
+10. **AI**: Executes the implementation following the task file exactly
 
 ### Implementation Rules
 - Always follow the task file exactly as written
@@ -237,12 +354,16 @@ All task files must be created in `.cursor/tasks/` directory with the naming con
 
 ## Benefits
 
-- **Structured Planning**: Clear roadmap before implementation
-- **Manual Review**: User can adjust scope and approach
+- **Requirements Clarity**: Interactive clarification ensures exact understanding of needs
+- **Appropriate UI Components**: Smart inference of form components based on data types
+- **Scope Precision**: Clear definition of CRUD operations needed vs. optional features
+- **User-Friendly Interaction**: Easy copy-paste field selection with helpful hints
+- **Structured Planning**: Clear roadmap before implementation based on clarified requirements
+- **Manual Review**: User can adjust scope and approach in both clarification and task phases
 - **Consistency**: Follows established patterns and conventions
-- **Documentation**: Creates permanent record of implementation decisions
-- **Quality Control**: Reduces errors through upfront planning
-- **Flexibility**: Allows modifications before code generation
+- **Documentation**: Creates permanent record of implementation decisions including requirements
+- **Quality Control**: Reduces errors through upfront planning and requirement validation
+- **Flexibility**: Allows modifications at both clarification and task review stages
 
-This approach ensures thoughtful, consistent route creation while maintaining project standards and allowing for user input at the planning stage.
+This enhanced approach ensures thoughtful, consistent route creation while maintaining project standards and providing multiple touchpoints for user input and refinement.
 ```
