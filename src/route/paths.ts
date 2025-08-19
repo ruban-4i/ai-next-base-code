@@ -17,4 +17,10 @@ export const paths = {
     edit: (id: string) => `/books/${id}/edit`,
     details: (id: string) => `/books/${id}`,
   },
+  qanda: {
+    root: '/qanda',
+    new: '/qanda/new',
+    edit: (id: string) => `/qanda/${id}/edit`,
+    details: (id: string) => `/qanda/${id}`,
+  },
 } as const;

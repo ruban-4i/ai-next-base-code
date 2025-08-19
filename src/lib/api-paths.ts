@@ -107,6 +107,26 @@ export const API_PATHS = {
     BATCH_DELETE: '/books/batch-delete',
     BATCH_UPDATE: '/books/batch-update',
   },
+
+  /**
+   * Q&A-related API endpoints (Online Test Application)
+   */
+  QANDA: {
+    // List all Q&A questions
+    GET_ALL: '/qna/682c577d3fb8871a0e56e142',
+
+    // Get single Q&A by ID
+    GET_BY_ID: (id: string) => `/qna/${id}`,
+
+    // Create new Q&A
+    CREATE: '/qna',
+
+    // Update existing Q&A
+    UPDATE: (id: string) => `/qna/${id}`,
+
+    // Delete Q&A
+    DELETE: (id: string) => `/qna/${id}`,
+  },
 } as const;
 
 /**
@@ -141,3 +161,4 @@ export const ROLE_PATHS = API_PATHS.ROLES;
 export const DEPARTMENT_PATHS = API_PATHS.DEPARTMENTS;
 export const TOPICS_PATHS = API_PATHS.TOPICS;
 export const BOOKS_PATHS = API_PATHS.BOOKS;
+export const QANDA_PATHS = API_PATHS.QANDA;
