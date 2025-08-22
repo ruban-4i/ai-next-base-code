@@ -48,8 +48,13 @@ Quick index of rule files under `./rules/`.
   - Globs: `src/**/*.{ts,tsx}`; Always apply: `true`
 
 - **Route Generation Task Planning**: Generate structured task files for new route creation with manual review process
+
   - File: [rules/route-generation-tasks.mdc](rules/route-generation-tasks.mdc)
   - Globs: `**/*`; Always apply: `false`
+
+- **Enhanced Route Generation Workflow**: Mandatory interactive clarification process before implementing any new route to ensure accurate requirements understanding
+  - File: [rules/enhanced-route-generation-workflow.mdc](rules/enhanced-route-generation-workflow.mdc)
+  - Globs: `**/*`; Always apply: `true`
 
 Usage:
 

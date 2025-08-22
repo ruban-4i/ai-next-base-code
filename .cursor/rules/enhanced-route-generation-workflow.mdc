@@ -1,0 +1,253 @@
+# Enhanced Route Generation Workflow
+
+## Purpose
+
+Establish a mandatory interactive clarification process before implementing any new route to ensure accurate requirements understanding and optimal code generation.
+
+## When This Rule Applies
+
+**ALWAYS** trigger this workflow when user requests:
+
+- New route with URL and data shape
+- "End-to-end route creation"
+- API data structure or JSON sample with CRUD operations
+- Table/form functionality with specific data
+- Route implementation involving database operations
+
+## Mandatory Process Flow
+
+```
+User Request → Interactive Clarification → Task File Generation → Manual Review → Implementation
+```
+
+**CRITICAL**: Never skip the Interactive Clarification step. Always ask the structured questions below before generating any code.
+
+## Interactive Clarification Questions
+
+### 1. Table Display Fields
+
+**Template:**
+
+```
+Based on the data shape you provided, here are all available fields:
+[List each field with its type from the provided data structure]
+
+Which fields should be displayed in the table view? Please copy and paste the fields you want to show, or specify them clearly.
+```
+
+**Requirements:**
+
+- List ALL available fields from the provided data shape
+- Include field types (string, number, boolean, etc.)
+- Ask for explicit field selection via copy/paste method
+
+### 2. Form Fields and Components
+
+**Template:**
+
+```
+For the create/edit form, here are the available fields and their inferred components:
+
+[Field name] - [Inferred component based on data type]
+
+Component Inference Rules:
+- Y/N values or boolean → Switch/Toggle component
+- Date strings → Date picker component
+- Enum/limited options → Select dropdown
+- Long text (>100 chars) → Textarea component
+- Numbers → Number input
+- Default → Text input
+
+Which fields should be included in the form and do you want any specific component types?
+```
+
+**Requirements:**
+
+- Analyze each field's data type from sample data
+- Apply component inference rules automatically
+- Allow user to override component choices
+
+### 3. CRUD Operations Scope
+
+**Template:**
+
+```
+What CRUD operations do you need for this route?
+
+- [ ] Create (C) - Add new records
+- [ ] Read (R) - List and view records
+- [ ] Update (U) - Edit existing records
+- [ ] Delete (D) - Remove records
+
+Please specify: Complete CRUD, Read-only, or specific operations only?
+```
+
+**Requirements:**
+
+- Present as checkboxes for clear selection
+- Offer "Complete CRUD" as shorthand option
+- Prevent over-engineering by asking explicitly
+
+### 4. Additional Features
+
+**Template:**
+
+```
+Do you need any additional features?
+
+Core Features:
+- [ ] Search/Filter functionality
+- [ ] Pagination (default: server-side pagination)
+- [ ] Sorting by specific fields
+- [ ] Bulk operations (bulk delete, bulk update)
+
+Advanced Features:
+- [ ] Export functionality (CSV, PDF)
+- [ ] Import functionality
+- [ ] Range filtering (dates, numbers)
+- [ ] Status management (active/inactive)
+- [ ] Audit trail (created/updated timestamps)
+- [ ] Permission-based access control
+- [ ] Custom validation rules
+
+Entity-Specific Filters:
+[Add relevant filters based on the data shape provided]
+```
+
+**Requirements:**
+
+- Categorize features (Core vs Advanced)
+- Add entity-specific filters based on data analysis
+- Present as checkboxes for easy selection
+
+## Implementation Rules
+
+### After Clarification Responses
+
+1. **Generate Comprehensive Task File**
+
+   - Create detailed implementation plan
+   - Include all clarified requirements
+   - Specify exact components and features
+   - Add file structure and code patterns
+
+2. **Task File Review Process**
+
+   - Present task file to user
+   - Allow manual modifications
+   - Wait for explicit "go ahead" confirmation
+   - Do not proceed without approval
+
+3. **Implementation Phase**
+   - Follow task file exactly
+   - Use established patterns and rules
+   - Implement only what was clarified and approved
+   - No assumptions or additions
+
+### Task File Generation Template
+
+```markdown
+# {Entity} Route Implementation Task
+
+**Date**: {DD-MM-YY}
+**Status**: Pending Approval
+
+## Requirements Summary
+
+### Table Display
+
+- Fields: [List approved fields]
+- Features: [List approved table features]
+
+### Form Configuration
+
+- Fields: [List with component types]
+- Validation: [Specify validation rules]
+
+### CRUD Operations
+
+- [List approved operations with details]
+
+### Additional Features
+
+- [List all approved additional features]
+
+## Implementation Plan
+
+### 1. Schema Creation
+
+- File: `src/lib/schemas/{entity}-schema.ts`
+- [Detailed schema requirements]
+
+### 2. API Integration
+
+- Update: `src/lib/api-paths.ts`
+- [API endpoint specifications]
+
+### 3. Server Functions/Actions
+
+- Files: `src/server/functions/{entity}-functions.ts`
+- Files: `src/server/actions/{entity}-actions.ts`
+- [CRUD operation details]
+
+### 4. UI Components
+
+- Table: [Specific requirements]
+- Forms: [Field-by-field specifications]
+- [Additional component requirements]
+
+### 5. Route Pages
+
+- [Page structure and requirements]
+
+## Approval Required
+
+Review the above plan and respond with "go ahead" to proceed with implementation.
+```
+
+## Quality Assurance
+
+### Benefits of This Workflow
+
+- ✅ **Requirements Clarity**: No assumptions, exact understanding
+- ✅ **Smart UI Components**: Automatic inference from data types
+- ✅ **Scope Control**: User defines exactly what's needed
+- ✅ **User-Friendly**: Easy copy/paste field selection
+- ✅ **Quality Assurance**: Multiple review points
+- ✅ **Flexibility**: Can adjust at both clarification and task stages
+
+### Anti-Patterns to Avoid
+
+- ❌ Skipping clarification questions
+- ❌ Making assumptions about requirements
+- ❌ Implementing before user approval
+- ❌ Adding features not explicitly requested
+- ❌ Generic component selection without data analysis
+
+## Integration with Existing Rules
+
+This workflow integrates with:
+
+- `zod-schema-generation.mdc` - For schema creation
+- `server-crud-pattern.mdc` - For server-side implementation
+- `axios-instance.mdc` - For API integration
+- `route-generation-tasks.mdc` - For task file structure
+
+## Enforcement
+
+**MANDATORY**: This workflow must be followed for ALL route generation requests. No exceptions.
+
+**Failure to follow this workflow will result in incomplete or incorrect implementations.**
+
+## Example Usage
+
+```
+User: "Create a new route /products with this data shape: {...}"
+
+AI: "I'll help you create the /products route! Following the enhanced workflow, I need to clarify a few details:
+
+## 1. Table Display Fields
+[Interactive clarification process begins...]"
+```
+
+This ensures every route implementation meets exact user requirements with optimal code quality.
