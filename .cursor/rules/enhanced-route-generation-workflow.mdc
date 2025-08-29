@@ -1,148 +1,269 @@
-# Enhanced Route Generation Workflow
+---
+alwaysApply: true
+---
+
+# Super-Efficient Route Generator (SERG) - Enhanced Workflow
 
 ## Purpose
 
-Establish a mandatory interactive clarification process before implementing any new route to ensure accurate requirements understanding and optimal code generation.
+**Lightning-fast route creation workflow** that replaces all previous route generation approaches. This system combines smart analysis, mandatory clarification, and structured implementation for maximum efficiency and accuracy.
+
+**IMPLEMENTATION DATE**: 22-08-25
+**STATUS**: Active - Replaces all previous route generation workflows
 
 ## When This Rule Applies
 
 **ALWAYS** trigger this workflow when user requests:
 
 - New route with URL and data shape
-- "End-to-end route creation"
+- "Create route" or "End-to-end route creation"
 - API data structure or JSON sample with CRUD operations
 - Table/form functionality with specific data
 - Route implementation involving database operations
+- "Generate pages for" + entity name
 
-## Mandatory Process Flow
+## Lightning-Fast Process Flow
 
 ```
-User Request → Interactive Clarification → Task File Generation → Manual Review → Implementation
+User Request → Smart Analysis (2 seconds) → Essential Questions (MANDATORY) → Implementation (2 minutes)
+Total Time: 3-4 minutes from request to working route
 ```
 
-**CRITICAL**: Never skip the Interactive Clarification step. Always ask the structured questions below before generating any code.
+**CRITICAL**: Never skip the Essential Questions step. Always ask structured questions before generating any code.
 
-## Interactive Clarification Questions
+## Smart Analysis Engine
 
-### 1. Table Display Fields
+**Phase 1: Automatic Data Analysis (2 seconds)**
+
+- Auto-detect field count (≤5 = simple, >5 = complex)
+- Identify relationships (nested objects/arrays = parent-child)
+- Scan for lookup patterns (\*\_id, status, category, type fields)
+- Infer data types from sample values
+- Recommend form approach (modal vs page based on complexity)
+- Suggest CRUD scope based on context
+
+**Phase 2: Intelligent Defaults**
+
+- Form Type: Modal for ≤5 simple fields, Page for complex/nested data
+- Table Fields: Show key identifiers, names, status fields; hide technical IDs
+- CRUD Operations: Complete CRUD unless explicitly limited
+- Components: Auto-map data types to optimal UI components
+- Features: Include search, pagination, sorting, filtering by default
+
+## Essential Questions Framework
+
+**MANDATORY**: Ask 2-4 targeted questions based on data complexity. Never skip this step.
+
+### Question Selection Rules
+
+**For Simple Data (≤5 fields):**
+
+- "Table fields look good? Any special UI needs? Form type preference?"
+
+**For Complex Data (>5 fields):**
+
+- "Which fields for table display? Child data display pattern? Form approach (page/modal)? Special features needed?"
+
+**For Nested Data (parent-child):**
+
+- "How to display nested arrays? Edit nested items inline or separate? Parent-child relationship handling?"
+
+### 1. Table Display Fields (Copy-Paste Friendly)
 
 **Template:**
 
 ```
-Based on the data shape you provided, here are all available fields:
-[List each field with its type from the provided data structure]
+📋 **TABLE FIELDS SELECTION**
 
-Which fields should be displayed in the table view? Please copy and paste the fields you want to show, or specify them clearly.
+Based on your data shape, here are ALL available fields:
+
+📌 **RECOMMENDED** (smart defaults):
+• [field1] (string) - Primary identifier
+• [field2] (string) - Display name
+• [field3] (enum) - Status/category
+• [field4] (date) - Created/updated timestamp
+
+📝 **ALL AVAILABLE FIELDS**:
+• [field1] (string) - [description]
+• [field2] (number) - [description]
+• [field3] (boolean) - [description]
+• [nested_array] (array) - [Parent-child relationship - will show count/summary]
+• [lookup_id] (string) - [Will resolve to display name]
+
+**COPY-PASTE your preferred fields OR say "use recommended":**
 ```
 
 **Requirements:**
 
-- List ALL available fields from the provided data shape
-- Include field types (string, number, boolean, etc.)
-- Ask for explicit field selection via copy/paste method
+- Show smart recommendations first
+- Mark parent-child arrays clearly
+- Identify lookup fields automatically
+- Provide copy-paste format for easy selection
 
-### 2. Form Fields and Components
+### 2. Parent-Child Relationship Handling (For Nested Data)
+
+**Template (only if nested arrays detected):**
+
+```
+🔗 **PARENT-CHILD RELATIONSHIPS DETECTED**
+
+Nested data found: [array_field_name] containing [child_object_structure]
+
+**DISPLAY OPTIONS** for nested children:
+
+**Detail View Display:**
+• 📋 **Collapsible Section** - Show/hide child list with expand/collapse
+• 🔍 **Modal View** - "View Children" button opens modal with full child details
+• 📊 **Inline Table** - Direct table display below parent details
+• 🎴 **Card Layout** - Children displayed as cards/tiles
+
+**Editing Options:**
+• ✏️ **Inline Editing** - Edit children directly within parent form
+• 🆕 **Separate Forms** - Add/edit children via separate modal/page
+• 🔄 **Bulk Operations** - Create/update multiple children at once
+
+**COPY-PASTE your preferences:**
+Detail View: [collapsible/modal/table/cards]
+Editing: [inline/separate/bulk]
+```
+
+### 3. Lookup Field Configuration
+
+**Template (only if \*\_id, status, category patterns detected):**
+
+```
+🔍 **LOOKUP FIELDS DETECTED**
+
+Fields that appear to be lookups: [field_name_id, status, category, etc.]
+
+**FOR EACH LOOKUP FIELD:**
+
+Field: [field_name]
+• Is this a lookup/dropdown field? (Y/N)
+• If YES, what is the lookup API/data source?
+• Display format: [Label only / Code only / "Label (Code)" / Custom]
+• Sample lookup API response shape (if available):
+
+**COPY-PASTE your lookup configuration:**
+[field_name]: Lookup API = [endpoint/source], Display = [format]
+```
+
+### 4. Form Type & Component Selection
 
 **Template:**
 
 ```
-For the create/edit form, here are the available fields and their inferred components:
+📝 **FORM CONFIGURATION**
 
-[Field name] - [Inferred component based on data type]
+**SMART ANALYSIS:**
+• Field Count: [X] fields ([simple/complex])
+• Nested Data: [Yes/No - affects form complexity]
+• **Recommended Form Type**: [Modal/Page] (based on complexity analysis)
 
-Component Inference Rules:
-- Y/N values or boolean → Switch/Toggle component
-- Date strings → Date picker component
-- Enum/limited options → Select dropdown
-- Long text (>100 chars) → Textarea component
-- Numbers → Number input
-- Default → Text input
+**FORM FIELDS & COMPONENTS** (smart inference applied):
 
-Which fields should be included in the form and do you want any specific component types?
+[field_name] (string) → Text Input
+[field_name] (number) → Number Input
+[field_name] (boolean) → Toggle Switch
+[field_name] (date) → Date Picker
+[field_name] (enum) → Select Dropdown
+[field_name] (long_text) → Textarea
+[lookup_field] → Select with API lookup
+
+**COPY-PASTE any component changes OR say "use smart defaults":**
 ```
 
 **Requirements:**
 
-- Analyze each field's data type from sample data
-- Apply component inference rules automatically
-- Allow user to override component choices
+- Auto-analyze form complexity
+- Smart component inference from data types
+- Clear modal vs page recommendation
+- Allow easy overrides
 
-### 3. CRUD Operations Scope
+### 5. CRUD Operations & Additional Features (Quick Selection)
 
 **Template:**
 
 ```
-What CRUD operations do you need for this route?
+⚡ **QUICK SELECTIONS**
 
-- [ ] Create (C) - Add new records
-- [ ] Read (R) - List and view records
-- [ ] Update (U) - Edit existing records
-- [ ] Delete (D) - Remove records
+**CRUD Scope** (default: Complete CRUD):
+• ✅ **Complete CRUD** - Full Create, Read, Update, Delete (RECOMMENDED)
+• 📖 **Read-Only** - List and view only
+• 🎯 **Custom** - Specify: [C/R/U/D combinations]
 
-Please specify: Complete CRUD, Read-only, or specific operations only?
+**Core Features** (auto-included by default):
+• ✅ Search/Filter functionality
+• ✅ Server-side pagination
+• ✅ Column sorting
+• ✅ Delete confirmations
+
+**Optional Enhancements:**
+• 📤 Export (CSV/PDF)
+• 📥 Import functionality
+• 🗑️ Bulk operations (delete/update)
+• 📊 Advanced filtering (date ranges, multi-select)
+• 👥 Permission controls
+• 📝 Audit trail (created/updated tracking)
+
+**COPY-PASTE your selections OR say "use defaults":**
+CRUD: [Complete CRUD/Read-Only/Custom]
+Optional: [list any additional features needed]
 ```
 
-**Requirements:**
+## Operation Modes
 
-- Present as checkboxes for clear selection
-- Offer "Complete CRUD" as shorthand option
-- Prevent over-engineering by asking explicitly
+### Default Mode: Smart Questions (3-4 minutes)
 
-### 4. Additional Features
+- Ask 2-4 essential questions based on data complexity
+- Smart defaults with user confirmation
+- Most efficient for standard use cases
 
-**Template:**
+### Advanced Mode: Detailed Planning (4-5 minutes)
 
-```
-Do you need any additional features?
+- Additional questions for complex relationships
+- Detailed task file generation
+- Best for complex business logic
 
-Core Features:
-- [ ] Search/Filter functionality
-- [ ] Pagination (default: server-side pagination)
-- [ ] Sorting by specific fields
-- [ ] Bulk operations (bulk delete, bulk update)
+### Express Mode: Zero Questions (1-2 minutes)
 
-Advanced Features:
-- [ ] Export functionality (CSV, PDF)
-- [ ] Import functionality
-- [ ] Range filtering (dates, numbers)
-- [ ] Status management (active/inactive)
-- [ ] Audit trail (created/updated timestamps)
-- [ ] Permission-based access control
-- [ ] Custom validation rules
+**Trigger**: User says "--express" or "use all smart defaults"
 
-Entity-Specific Filters:
-[Add relevant filters based on the data shape provided]
-```
-
-**Requirements:**
-
-- Categorize features (Core vs Advanced)
-- Add entity-specific filters based on data analysis
-- Present as checkboxes for easy selection
+- Skip questions entirely
+- Apply all smart defaults
+- Immediate implementation
+- **Use only when explicitly requested**
 
 ## Implementation Rules
 
+### Critical Rules (NEVER SKIP)
+
+1. **ALWAYS ask Essential Questions first** unless user explicitly says "--express"
+2. **NEVER proceed directly to implementation** without clarification
+3. **Use smart defaults** but confirm with user
+4. **Follow existing project patterns** from similar routes
+
 ### After Clarification Responses
 
-1. **Generate Comprehensive Task File**
+1. **Generate Task File** (in `.cursor/tasks/22-08-25/`)
 
-   - Create detailed implementation plan
-   - Include all clarified requirements
-   - Specify exact components and features
-   - Add file structure and code patterns
+   - Incorporate all user clarifications
+   - Include smart defaults where user accepted them
+   - Specify exact implementation approach
+   - List all files to be created/updated
 
-2. **Task File Review Process**
+2. **Implementation Phase**
 
-   - Present task file to user
-   - Allow manual modifications
-   - Wait for explicit "go ahead" confirmation
-   - Do not proceed without approval
+   - Execute task file exactly as specified
+   - Update task progress in real-time
+   - Use established patterns from existing routes
+   - Verify all path constants are used correctly
 
-3. **Implementation Phase**
-   - Follow task file exactly
-   - Use established patterns and rules
-   - Implement only what was clarified and approved
-   - No assumptions or additions
+3. **Quality Checks**
+   - Ensure parent-child relationships handled correctly
+   - Verify lookup fields display properly
+   - Confirm modal vs page forms work as intended
+   - Test all CRUD operations function properly
 
 ### Task File Generation Template
 
@@ -239,15 +360,570 @@ This workflow integrates with:
 
 **Failure to follow this workflow will result in incomplete or incorrect implementations.**
 
-## Example Usage
+## Practical Examples
+
+### Example 1: Simple Entity (5 fields or less)
 
 ```
-User: "Create a new route /products with this data shape: {...}"
+User: "Create a /products route with this data:
+{id: 1, name: 'Widget', price: 29.99, active: true, category: 'electronics'}"
 
-AI: "I'll help you create the /products route! Following the enhanced workflow, I need to clarify a few details:
+AI Response:
+"🚀 I'll create your /products route using the Super-Efficient Route Generator!
 
-## 1. Table Display Fields
-[Interactive clarification process begins...]"
+**SMART ANALYSIS COMPLETE** (2 seconds):
+• Field Count: 5 fields (Simple)
+• Lookup Detected: category field
+• Recommended Form: Modal (simple data)
+• Suggested CRUD: Complete CRUD
+
+📋 **TABLE FIELDS SELECTION**
+**RECOMMENDED** (smart defaults):
+• name (string) - Product name
+• price (number) - Price amount
+• category (string) - Product category
+• active (boolean) - Status
+
+📝 **LOOKUP FIELD DETECTED**
+Field: category
+• Is 'category' a lookup/dropdown? (Y/N)
+• If YES, lookup API/source?
+
+⚡ **QUICK SELECTIONS**
+CRUD: Complete CRUD (recommended)
+Form Type: Modal (recommended for simple data)
+
+**COPY-PASTE your preferences OR say "use all recommendations":**"
 ```
 
-This ensures every route implementation meets exact user requirements with optimal code quality.
+### Example 2: Complex Entity (Nested Data)
+
+```
+User: "Create /classes route:
+{id: 1, name: 'Math 101', teacher_id: 5, students: [{id: 1, name: 'John', grade: 'A'}, {id: 2, name: 'Jane', grade: 'B'}], semester: 'Fall 2025'}"
+
+AI Response:
+"🚀 Creating /classes route with Smart Analysis!
+
+**SMART ANALYSIS COMPLETE**:
+• Field Count: 5 fields + nested array (Complex)
+• Parent-Child: students array detected
+• Lookup Detected: teacher_id
+• Recommended Form: Full Page (complex nested data)
+
+🔗 **PARENT-CHILD RELATIONSHIP DETECTED**
+Nested data: students array containing {id, name, grade}
+
+**DISPLAY OPTIONS:**
+Detail View: [collapsible/modal/table/cards]
+Editing: [inline/separate/bulk]
+
+🔍 **LOOKUP FIELD DETECTED**
+teacher_id: Is this a lookup to teachers table? API source?
+
+📝 **FORM CONFIGURATION**
+Recommended: Full Page Form (nested data complexity)
+
+**COPY-PASTE your preferences:**
+Parent-Child Display: [your choice]
+Teacher Lookup: [API source]
+Form Type: [page/modal]"
+```
+
+### Example 3: Express Mode
+
+```
+User: "Create /orders route --express with: {id: 1, customer: 'John', total: 100, status: 'pending'}"
+
+AI Response:
+"⚡ EXPRESS MODE ACTIVATED - Using all smart defaults!
+
+Implementing /orders route with:
+• Complete CRUD operations
+• Table fields: customer, total, status
+• Full page forms
+• Standard features: search, pagination, sorting
+
+Creating task file and implementing now... (2 minutes)"
+```
+
+## Modes Summary
+
+| Mode         | Duration | Questions               | Best For               |
+| ------------ | -------- | ----------------------- | ---------------------- |
+| **Default**  | 3-4 min  | 2-4 essential           | Standard routes        |
+| **Advanced** | 4-5 min  | 5-8 detailed            | Complex business logic |
+| **Express**  | 1-2 min  | 0 (user says --express) | Simple prototypes      |
+
+## Integration Notes
+
+- Works seamlessly with existing cursor rules
+- Maintains all current project patterns
+- Uses established schemas, actions, functions structure
+- Preserves path constants workflow
+- Compatible with current UI components and hooks
+
+This enhanced system ensures lightning-fast, accurate route generation while maintaining the flexibility to handle any complexity level.
+
+# Super-Efficient Route Generator (SERG) - Enhanced Workflow
+
+## Purpose
+
+**Lightning-fast route creation workflow** that replaces all previous route generation approaches. This system combines smart analysis, mandatory clarification, and structured implementation for maximum efficiency and accuracy.
+
+**IMPLEMENTATION DATE**: 22-08-25
+**STATUS**: Active - Replaces all previous route generation workflows
+
+## When This Rule Applies
+
+**ALWAYS** trigger this workflow when user requests:
+
+- New route with URL and data shape
+- "Create route" or "End-to-end route creation"
+- API data structure or JSON sample with CRUD operations
+- Table/form functionality with specific data
+- Route implementation involving database operations
+- "Generate pages for" + entity name
+
+## Lightning-Fast Process Flow
+
+```
+User Request → Smart Analysis (2 seconds) → Essential Questions (MANDATORY) → Implementation (2 minutes)
+Total Time: 3-4 minutes from request to working route
+```
+
+**CRITICAL**: Never skip the Essential Questions step. Always ask structured questions before generating any code.
+
+## Smart Analysis Engine
+
+**Phase 1: Automatic Data Analysis (2 seconds)**
+
+- Auto-detect field count (≤5 = simple, >5 = complex)
+- Identify relationships (nested objects/arrays = parent-child)
+- Scan for lookup patterns (\*\_id, status, category, type fields)
+- Infer data types from sample values
+- Recommend form approach (modal vs page based on complexity)
+- Suggest CRUD scope based on context
+
+**Phase 2: Intelligent Defaults**
+
+- Form Type: Modal for ≤5 simple fields, Page for complex/nested data
+- Table Fields: Show key identifiers, names, status fields; hide technical IDs
+- CRUD Operations: Complete CRUD unless explicitly limited
+- Components: Auto-map data types to optimal UI components
+- Features: Include search, pagination, sorting, filtering by default
+
+## Essential Questions Framework
+
+**MANDATORY**: Ask 2-4 targeted questions based on data complexity. Never skip this step.
+
+### Question Selection Rules
+
+**For Simple Data (≤5 fields):**
+
+- "Table fields look good? Any special UI needs? Form type preference?"
+
+**For Complex Data (>5 fields):**
+
+- "Which fields for table display? Child data display pattern? Form approach (page/modal)? Special features needed?"
+
+**For Nested Data (parent-child):**
+
+- "How to display nested arrays? Edit nested items inline or separate? Parent-child relationship handling?"
+
+### 1. Table Display Fields (Copy-Paste Friendly)
+
+**Template:**
+
+```
+📋 **TABLE FIELDS SELECTION**
+
+Based on your data shape, here are ALL available fields:
+
+📌 **RECOMMENDED** (smart defaults):
+• [field1] (string) - Primary identifier
+• [field2] (string) - Display name
+• [field3] (enum) - Status/category
+• [field4] (date) - Created/updated timestamp
+
+📝 **ALL AVAILABLE FIELDS**:
+• [field1] (string) - [description]
+• [field2] (number) - [description]
+• [field3] (boolean) - [description]
+• [nested_array] (array) - [Parent-child relationship - will show count/summary]
+• [lookup_id] (string) - [Will resolve to display name]
+
+**COPY-PASTE your preferred fields OR say "use recommended":**
+```
+
+**Requirements:**
+
+- Show smart recommendations first
+- Mark parent-child arrays clearly
+- Identify lookup fields automatically
+- Provide copy-paste format for easy selection
+
+### 2. Parent-Child Relationship Handling (For Nested Data)
+
+**Template (only if nested arrays detected):**
+
+```
+🔗 **PARENT-CHILD RELATIONSHIPS DETECTED**
+
+Nested data found: [array_field_name] containing [child_object_structure]
+
+**DISPLAY OPTIONS** for nested children:
+
+**Detail View Display:**
+• 📋 **Collapsible Section** - Show/hide child list with expand/collapse
+• 🔍 **Modal View** - "View Children" button opens modal with full child details
+• 📊 **Inline Table** - Direct table display below parent details
+• 🎴 **Card Layout** - Children displayed as cards/tiles
+
+**Editing Options:**
+• ✏️ **Inline Editing** - Edit children directly within parent form
+• 🆕 **Separate Forms** - Add/edit children via separate modal/page
+• 🔄 **Bulk Operations** - Create/update multiple children at once
+
+**COPY-PASTE your preferences:**
+Detail View: [collapsible/modal/table/cards]
+Editing: [inline/separate/bulk]
+```
+
+### 3. Lookup Field Configuration
+
+**Template (only if \*\_id, status, category patterns detected):**
+
+```
+🔍 **LOOKUP FIELDS DETECTED**
+
+Fields that appear to be lookups: [field_name_id, status, category, etc.]
+
+**FOR EACH LOOKUP FIELD:**
+
+Field: [field_name]
+• Is this a lookup/dropdown field? (Y/N)
+• If YES, what is the lookup API/data source?
+• Display format: [Label only / Code only / "Label (Code)" / Custom]
+• Sample lookup API response shape (if available):
+
+**COPY-PASTE your lookup configuration:**
+[field_name]: Lookup API = [endpoint/source], Display = [format]
+```
+
+### 4. Form Type & Component Selection
+
+**Template:**
+
+```
+📝 **FORM CONFIGURATION**
+
+**SMART ANALYSIS:**
+• Field Count: [X] fields ([simple/complex])
+• Nested Data: [Yes/No - affects form complexity]
+• **Recommended Form Type**: [Modal/Page] (based on complexity analysis)
+
+**FORM FIELDS & COMPONENTS** (smart inference applied):
+
+[field_name] (string) → Text Input
+[field_name] (number) → Number Input
+[field_name] (boolean) → Toggle Switch
+[field_name] (date) → Date Picker
+[field_name] (enum) → Select Dropdown
+[field_name] (long_text) → Textarea
+[lookup_field] → Select with API lookup
+
+**COPY-PASTE any component changes OR say "use smart defaults":**
+```
+
+**Requirements:**
+
+- Auto-analyze form complexity
+- Smart component inference from data types
+- Clear modal vs page recommendation
+- Allow easy overrides
+
+### 5. CRUD Operations & Additional Features (Quick Selection)
+
+**Template:**
+
+```
+⚡ **QUICK SELECTIONS**
+
+**CRUD Scope** (default: Complete CRUD):
+• ✅ **Complete CRUD** - Full Create, Read, Update, Delete (RECOMMENDED)
+• 📖 **Read-Only** - List and view only
+• 🎯 **Custom** - Specify: [C/R/U/D combinations]
+
+**Core Features** (auto-included by default):
+• ✅ Search/Filter functionality
+• ✅ Server-side pagination
+• ✅ Column sorting
+• ✅ Delete confirmations
+
+**Optional Enhancements:**
+• 📤 Export (CSV/PDF)
+• 📥 Import functionality
+• 🗑️ Bulk operations (delete/update)
+• 📊 Advanced filtering (date ranges, multi-select)
+• 👥 Permission controls
+• 📝 Audit trail (created/updated tracking)
+
+**COPY-PASTE your selections OR say "use defaults":**
+CRUD: [Complete CRUD/Read-Only/Custom]
+Optional: [list any additional features needed]
+```
+
+## Operation Modes
+
+### Default Mode: Smart Questions (3-4 minutes)
+
+- Ask 2-4 essential questions based on data complexity
+- Smart defaults with user confirmation
+- Most efficient for standard use cases
+
+### Advanced Mode: Detailed Planning (4-5 minutes)
+
+- Additional questions for complex relationships
+- Detailed task file generation
+- Best for complex business logic
+
+### Express Mode: Zero Questions (1-2 minutes)
+
+**Trigger**: User says "--express" or "use all smart defaults"
+
+- Skip questions entirely
+- Apply all smart defaults
+- Immediate implementation
+- **Use only when explicitly requested**
+
+## Implementation Rules
+
+### Critical Rules (NEVER SKIP)
+
+1. **ALWAYS ask Essential Questions first** unless user explicitly says "--express"
+2. **NEVER proceed directly to implementation** without clarification
+3. **Use smart defaults** but confirm with user
+4. **Follow existing project patterns** from similar routes
+
+### After Clarification Responses
+
+1. **Generate Task File** (in `.cursor/tasks/22-08-25/`)
+
+   - Incorporate all user clarifications
+   - Include smart defaults where user accepted them
+   - Specify exact implementation approach
+   - List all files to be created/updated
+
+2. **Implementation Phase**
+
+   - Execute task file exactly as specified
+   - Update task progress in real-time
+   - Use established patterns from existing routes
+   - Verify all path constants are used correctly
+
+3. **Quality Checks**
+   - Ensure parent-child relationships handled correctly
+   - Verify lookup fields display properly
+   - Confirm modal vs page forms work as intended
+   - Test all CRUD operations function properly
+
+### Task File Generation Template
+
+```markdown
+# {Entity} Route Implementation Task
+
+**Date**: {DD-MM-YY}
+**Status**: Pending Approval
+
+## Requirements Summary
+
+### Table Display
+
+- Fields: [List approved fields]
+- Features: [List approved table features]
+
+### Form Configuration
+
+- Fields: [List with component types]
+- Validation: [Specify validation rules]
+
+### CRUD Operations
+
+- [List approved operations with details]
+
+### Additional Features
+
+- [List all approved additional features]
+
+## Implementation Plan
+
+### 1. Schema Creation
+
+- File: `src/lib/schemas/{entity}-schema.ts`
+- [Detailed schema requirements]
+
+### 2. API Integration
+
+- Update: `src/lib/api-paths.ts`
+- [API endpoint specifications]
+
+### 3. Server Functions/Actions
+
+- Files: `src/server/functions/{entity}-functions.ts`
+- Files: `src/server/actions/{entity}-actions.ts`
+- [CRUD operation details]
+
+### 4. UI Components
+
+- Table: [Specific requirements]
+- Forms: [Field-by-field specifications]
+- [Additional component requirements]
+
+### 5. Route Pages
+
+- [Page structure and requirements]
+
+## Approval Required
+
+Review the above plan and respond with "go ahead" to proceed with implementation.
+```
+
+## Quality Assurance
+
+### Benefits of This Workflow
+
+- ✅ **Requirements Clarity**: No assumptions, exact understanding
+- ✅ **Smart UI Components**: Automatic inference from data types
+- ✅ **Scope Control**: User defines exactly what's needed
+- ✅ **User-Friendly**: Easy copy/paste field selection
+- ✅ **Quality Assurance**: Multiple review points
+- ✅ **Flexibility**: Can adjust at both clarification and task stages
+
+### Anti-Patterns to Avoid
+
+- ❌ Skipping clarification questions
+- ❌ Making assumptions about requirements
+- ❌ Implementing before user approval
+- ❌ Adding features not explicitly requested
+- ❌ Generic component selection without data analysis
+
+## Integration with Existing Rules
+
+This workflow integrates with:
+
+- `zod-schema-generation.mdc` - For schema creation
+- `server-crud-pattern.mdc` - For server-side implementation
+- `axios-instance.mdc` - For API integration
+- `route-generation-tasks.mdc` - For task file structure
+
+## Enforcement
+
+**MANDATORY**: This workflow must be followed for ALL route generation requests. No exceptions.
+
+**Failure to follow this workflow will result in incomplete or incorrect implementations.**
+
+## Practical Examples
+
+### Example 1: Simple Entity (5 fields or less)
+
+```
+User: "Create a /products route with this data:
+{id: 1, name: 'Widget', price: 29.99, active: true, category: 'electronics'}"
+
+AI Response:
+"🚀 I'll create your /products route using the Super-Efficient Route Generator!
+
+**SMART ANALYSIS COMPLETE** (2 seconds):
+• Field Count: 5 fields (Simple)
+• Lookup Detected: category field
+• Recommended Form: Modal (simple data)
+• Suggested CRUD: Complete CRUD
+
+📋 **TABLE FIELDS SELECTION**
+**RECOMMENDED** (smart defaults):
+• name (string) - Product name
+• price (number) - Price amount
+• category (string) - Product category
+• active (boolean) - Status
+
+📝 **LOOKUP FIELD DETECTED**
+Field: category
+• Is 'category' a lookup/dropdown? (Y/N)
+• If YES, lookup API/source?
+
+⚡ **QUICK SELECTIONS**
+CRUD: Complete CRUD (recommended)
+Form Type: Modal (recommended for simple data)
+
+**COPY-PASTE your preferences OR say "use all recommendations":**"
+```
+
+### Example 2: Complex Entity (Nested Data)
+
+```
+User: "Create /classes route:
+{id: 1, name: 'Math 101', teacher_id: 5, students: [{id: 1, name: 'John', grade: 'A'}, {id: 2, name: 'Jane', grade: 'B'}], semester: 'Fall 2025'}"
+
+AI Response:
+"🚀 Creating /classes route with Smart Analysis!
+
+**SMART ANALYSIS COMPLETE**:
+• Field Count: 5 fields + nested array (Complex)
+• Parent-Child: students array detected
+• Lookup Detected: teacher_id
+• Recommended Form: Full Page (complex nested data)
+
+🔗 **PARENT-CHILD RELATIONSHIP DETECTED**
+Nested data: students array containing {id, name, grade}
+
+**DISPLAY OPTIONS:**
+Detail View: [collapsible/modal/table/cards]
+Editing: [inline/separate/bulk]
+
+🔍 **LOOKUP FIELD DETECTED**
+teacher_id: Is this a lookup to teachers table? API source?
+
+📝 **FORM CONFIGURATION**
+Recommended: Full Page Form (nested data complexity)
+
+**COPY-PASTE your preferences:**
+Parent-Child Display: [your choice]
+Teacher Lookup: [API source]
+Form Type: [page/modal]"
+```
+
+### Example 3: Express Mode
+
+```
+User: "Create /orders route --express with: {id: 1, customer: 'John', total: 100, status: 'pending'}"
+
+AI Response:
+"⚡ EXPRESS MODE ACTIVATED - Using all smart defaults!
+
+Implementing /orders route with:
+• Complete CRUD operations
+• Table fields: customer, total, status
+• Full page forms
+• Standard features: search, pagination, sorting
+
+Creating task file and implementing now... (2 minutes)"
+```
+
+## Modes Summary
+
+| Mode         | Duration | Questions               | Best For               |
+| ------------ | -------- | ----------------------- | ---------------------- |
+| **Default**  | 3-4 min  | 2-4 essential           | Standard routes        |
+| **Advanced** | 4-5 min  | 5-8 detailed            | Complex business logic |
+| **Express**  | 1-2 min  | 0 (user says --express) | Simple prototypes      |
+
+## Integration Notes
+
+- Works seamlessly with existing cursor rules
+- Maintains all current project patterns
+- Uses established schemas, actions, functions structure
+- Preserves path constants workflow
+- Compatible with current UI components and hooks
+
+This enhanced system ensures lightning-fast, accurate route generation while maintaining the flexibility to handle any complexity level.

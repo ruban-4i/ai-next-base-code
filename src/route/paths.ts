@@ -23,4 +23,10 @@ export const paths = {
     edit: (id: string) => `/qanda/${id}/edit`,
     details: (id: string) => `/qanda/${id}`,
   },
+  figmaExample: {
+    payrollSlip: '/figma-example/payroll-slip',
+  },
+  dashboard: {
+    root: '/dashboard',
+  },
 } as const;

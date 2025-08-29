@@ -53,7 +53,12 @@ Quick index of rule files under `./rules/`.
   - Globs: `**/*`; Always apply: `false`
 
 - **Enhanced Route Generation Workflow**: Mandatory interactive clarification process before implementing any new route to ensure accurate requirements understanding
+
   - File: [rules/enhanced-route-generation-workflow.mdc](rules/enhanced-route-generation-workflow.mdc)
+  - Globs: `**/*`; Always apply: `true`
+
+- **MANDATORY SERG Workflow Enforcement**: CRITICAL - Enforces 5-step SERG workflow without exceptions. Auto-detects route creation requests and prevents workflow violations.
+  - File: [rules/mandatory-serg-enforcement.md](rules/mandatory-serg-enforcement.md)
   - Globs: `**/*`; Always apply: `true`
 
 Usage:
