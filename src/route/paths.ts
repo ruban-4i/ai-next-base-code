@@ -29,4 +29,15 @@ export const paths = {
   dashboard: {
     root: '/dashboard',
   },
+  dashboard2: {
+    root: '/dashboard-2',
+    services: '/dashboard-2/services',
+    createForm: '/dashboard-2/create-form',
+  },
+  login: {
+    root: '/login',
+  },
+  career: {
+    root: '/career',
+  },
 } as const;
